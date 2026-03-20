@@ -112,8 +112,12 @@ def trigger_autosave():
 def build_master_regex(rules):
     pattern_parts = []
     for i, r in enumerate(rules):
-        if r.get('type') == 'pattern' and r.get('pattern'):
-            pattern_parts.append(rf"(?P<rule_{i}>{r['pattern']})")
+        rule_pat = r.get('pattern', '')
+        # Fix: Strip (?i) if present, as it's provided globally in re.compile
+        if rule_pat: rule_pat = rule_pat.replace("(?i)", "")
+        
+        if r.get('type') == 'pattern' and rule_pat:
+            pattern_parts.append(rf"(?P<rule_{i}>{rule_pat})")
         else:
             kws = r.get('keywords', [])
             if kws:
@@ -388,7 +392,8 @@ if show_side:
             trigger_word = st.text_input("If sentence starts with...")
             if st.button("➕ Add If-Then Rule"):
                 if c_n and trigger_word:
-                    pattern = rf"(?i)\b{re.escape(trigger_word)}.*?(?:[.?!؟]|$)"
+                    # Fix: Remove (?i) as it's handled by re.IGNORECASE in compile
+                    pattern = rf"\b{re.escape(trigger_word)}.*?(?:[.?!؟]|$)"
                     st.session_state.rules.append({'name':c_n, 'type': 'pattern', 'hex_code':PRELOADED_COLORS[col_c], 'pattern': pattern})
                     save_rules_to_json(st.session_state.rules); st.rerun()
 
