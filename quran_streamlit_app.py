@@ -376,7 +376,11 @@ if show_side:
         st.session_state.b_author = st.text_input("Author Name", st.session_state.get('b_author', ""))
         st.session_state.b_year = st.text_input("Year", st.session_state.get('b_year', str(datetime.datetime.now().year)))
         st.session_state.is_rtl = st.toggle("Primary Text is RTL", value=st.session_state.get('is_rtl', False))
-        st.session_state.labels_raw = st.text_input("Historical Variant Labels (CSV)", st.session_state.get('labels_raw','Yusuf Ali, Pickthall, Sahih'))
+        
+        default_lib = "Abdullah Yusuf Ali (1934), Marmaduke Pickthall (1930), Maulana Muhammad Ali (1917), George Sale (1734), E.H. Palmer (1880), J.M. Rodwell (1861), Mohammad Abdul Hakim Khan (1905), Mirza Hairat Dehlawi (1912), Al-Hajj Hafiz Ghulam Sarwar (1920), Alexander Ross (1649)"
+        st.session_state.labels_raw = st.text_input("Historical Variant Labels (CSV)", st.session_state.get('labels_raw', default_lib))
+        if st.button("📚 Load Al-Qalam Standard Library (1649-1934)", use_container_width=True):
+            st.session_state.labels_raw = default_lib; st.rerun()
         
         st.divider(); st.header("🎨 Taxonomy Rules")
         c_n = st.text_input("Category Name")
