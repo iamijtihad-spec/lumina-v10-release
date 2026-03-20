@@ -348,11 +348,13 @@ if 'chapters' not in st.session_state:
         st.session_state.b_author = sv.get('metadata',{}).get('author', '')
         st.session_state.b_year = sv.get('metadata',{}).get('year', str(datetime.datetime.now().year))
         st.session_state.is_rtl = sv.get('metadata',{}).get('is_rtl', False)
-        st.session_state.labels_raw = sv.get('metadata',{}).get('custom_labels', 'Yusuf Ali, Sahih International, Pickthall')
+        default_labels = "Abdullah Yusuf Ali (1934), Marmaduke Pickthall (1930), Maulana Muhammad Ali (1917), George Sale (1734), E.H. Palmer (1880), J.M. Rodwell (1861), Mohammad Abdul Hakim Khan (1905), Mirza Hairat Dehlawi (1912), Al-Hajj Hafiz Ghulam Sarwar (1920), Alexander Ross (1649)"
+        st.session_state.labels_raw = sv.get('metadata',{}).get('custom_labels', default_labels)
     else:
-        st.session_state.chapters = [{"id":str(uuid.uuid4()),"title":"Surah 1: Al-Fatiha","sections":[{"id":str(uuid.uuid4()),"title":"Ayah 1","source_text":"","translations":[{"id":str(uuid.uuid4()),"name":"Yusuf Ali","text":""}],"commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}]}]
+        st.session_state.chapters = [{"id":str(uuid.uuid4()),"title":"Surah 1: Al-Fatiha","sections":[{"id":str(uuid.uuid4()),"title":"Ayah 1","source_text":"","translations":[{"id":str(uuid.uuid4()),"name":"Abdullah Yusuf Ali (1934)","text":""}],"commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}]}]
         st.session_state.b_title, st.session_state.b_author, st.session_state.b_year = "Quranic Research Manual", "", str(datetime.datetime.now().year)
-        st.session_state.is_rtl, st.session_state.labels_raw = True, "Yusuf Ali, Sahih International, Pickthall"
+        default_labels = "Abdullah Yusuf Ali (1934), Marmaduke Pickthall (1930), Maulana Muhammad Ali (1917), George Sale (1734), E.H. Palmer (1880), J.M. Rodwell (1861), Mohammad Abdul Hakim Khan (1905), Mirza Hairat Dehlawi (1912), Al-Hajj Hafiz Ghulam Sarwar (1920), Alexander Ross (1649)"
+        st.session_state.is_rtl, st.session_state.labels_raw = True, default_labels
 
 LABELS = [l.strip() for l in st.session_state.get('labels_raw','').split(',') if l.strip()] + ["Custom..."]
 
