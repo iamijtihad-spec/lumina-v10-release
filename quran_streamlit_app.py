@@ -12,26 +12,6 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_TAB_ALIGNMENT
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
-# --- AI INTEGRATION (SECURITY-FIRST) ---
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
-
-try:
-    import google.generativeai as genai
-    AI_AVAILABLE = True
-    # Default to the key provided by the user in the .env file
-    ENV_KEY = os.getenv("GEMINI_API_KEY")
-    if ENV_KEY and 'ai_key' not in st.session_state:
-        genai.configure(api_key=ENV_KEY)
-        st.session_state['ai_key'] = ENV_KEY
-    
-    # Standard Reliable Models
-    AI_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
-except ImportError:
-    AI_AVAILABLE = False
 
 # ==========================================
 # PAGE CONFIG & UI SYSTEM
@@ -375,7 +355,6 @@ LABELS = [l.strip() for l in st.session_state.get('labels_raw','').split(',') if
 # Control Center (Toggles)
 c_z1, c_z2, c_z3 = st.columns(3)
 zen = c_z1.toggle("🧘 Zen Mode", value=st.session_state.get('zen_mode', False))
-# Auto-restore dash/side if not zen, unless manually toggled otherwise
 show_dash = c_z2.toggle("📊 Show Dashboard", value=st.session_state.get('show_dash', not zen))
 show_side = c_z3.toggle("🛠️ Sidebar Controls", value=st.session_state.get('show_side', not zen))
 st.session_state.zen_mode = zen
@@ -386,24 +365,6 @@ st.session_state.show_side = show_side
 if show_side:
     with st.sidebar:
         st.caption("🌙 Dark Mode Active" if is_dark_mode else "☀️ Light Mode Active")
-        
-        st.header("🤖 AI Setup")
-        if AI_AVAILABLE:
-            st.info("💡 Get a free API key at [aistudio.google.com](https://aistudio.google.com/)")
-            ai_key = st.text_input("Gemini API Key", value=st.session_state.get('ai_key', os.getenv("GEMINI_API_KEY", "")), type="password", help="The previous public key was deactivated due to security leak detection. Please provide your own private key.")
-            model_choice = st.selectbox("Scholar's Model", AI_MODELS, index=0)
-            st.session_state['ai_model'] = model_choice
-            
-            if ai_key:
-                try:
-                    genai.configure(api_key=ai_key)
-                    st.session_state['ai_key'] = ai_key
-                    st.success(f"AI Authenticated (Model: {model_choice})")
-                except Exception as e:
-                    st.error(f"AI Config Error: {e}")
-        else:
-            st.warning("⚠️ AI module 'google-generativeai' not installed.")
-            
         st.divider(); st.header("📚 Project Details")
         st.session_state.b_title = st.text_input("Project Title", st.session_state.get('b_title', "Comparative Study"))
         st.session_state.b_author = st.text_input("Author Name", st.session_state.get('b_author', ""))
@@ -461,7 +422,7 @@ if show_side:
 # --- DASHBOARD ---
 if show_dash:
     st.markdown("### 📊 Scholar's Dashboard")
-    cs = st.columns(5)
+    cs = st.columns(4)
     tot_s = sum(len(c.get('sections',[])) for c in st.session_state.chapters)
     
     master_pattern = build_master_regex(st.session_state.rules)
@@ -476,7 +437,6 @@ if show_dash:
     cs[1].metric("Sections", tot_s)
     cs[2].metric("Taxonomies", len(st.session_state.rules))
     cs[3].metric("Illuminations", ic)
-    cs[4].metric("AI Status", "Ready" if st.session_state.get('ai_key') else "Offline")
     st.divider()
 
 # --- TABS ---
@@ -498,59 +458,11 @@ with t1:
                     sc['source_text'] = st.text_area(lvl, sc.get('source_text', sc.get('arabic_text','')), key=f"sr_{sc['id']}", height=80)
                     
                     if not zen:
-                        # --- AI RESEARCH ASSISTANT PANEL ---
-                        if AI_AVAILABLE and st.session_state.get('ai_key'):
-                            st.divider()
-                            st.markdown("##### 🤖 AI Research Assistant (Background Analysis)")
-                            ai_c1, ai_c2 = st.columns(2)
-                            with ai_c1:
-                                target_lang = st.selectbox("Target Language", ["English", "Spanish", "French", "German", "Japanese", "Mandarin"], key=f"ail_{sc['id']}")
-                                if st.button("🌐 Generate Foreign Translation", use_container_width=True, key=f"ait_{sc['id']}"):
-                                    if sc['source_text']:
-                                        with st.spinner("Translating safely in background..."):
-                                            try:
-                                                m_name = st.session_state.get('ai_model', "gemini-1.5-flash")
-                                                model = genai.GenerativeModel(m_name)
-                                                prompt = f"Translate the following text into highly accurate, academic {target_lang}. Maintain theological/literary nuance. Source text: {sc['source_text']}"
-                                                response = model.generate_content(prompt)
-                                                sc['translations'].append({"id":str(uuid.uuid4()), "name":f"AI Translation ({target_lang})", "text":response.text.strip()})
-                                                st.rerun()
-                                            except Exception as ai_e:
-                                                if "429" in str(ai_e):
-                                                    st.error("⏳ AI Quota Exceeded for this Minute. Please wait 60 seconds and retry.")
-                                                else:
-                                                    st.error(f"AI Error: {ai_e}")
-                                    else: st.warning("Please provide Source Text.")
-                            
-                            with ai_c2:
-                                if st.button("🔍 Map Differences in Historical Variants", use_container_width=True, key=f"aic_{sc['id']}"):
-                                    human_variants = [t for t in sc.get('translations', []) if t['text'] and "AI Translation" not in t['name']]
-                                    if len(human_variants) >= 2:
-                                        with st.spinner("Analyzing historical nuances..."):
-                                            try:
-                                                m_name = st.session_state.get('ai_model', "gemini-1.5-flash")
-                                                model = genai.GenerativeModel(m_name)
-                                                vars_text = "\n".join([f"[{t['name']}]: {t['text']}" for t in human_variants])
-                                                prompt = f"Act as a comparative theology scholar. Analyze the linguistic and theological nuances between these historical translations of a single verse. Keep it concise, academic, and highlight specific word choice differences.\n\nTranslations:\n{vars_text}"
-                                                response = model.generate_content(prompt)
-                                                sc['commentary'] = sc.get('commentary', '') + f"\n\n[AI Comparative Mapping]:\n{response.text.strip()}"
-                                                st.rerun()
-                                            except Exception as ai_e:
-                                                if "429" in str(ai_e):
-                                                    st.error("⏳ AI Quota Exceeded for this Minute. Please wait 60 seconds and retry.")
-                                                else:
-                                                    st.error(f"AI Error: {ai_e}")
-                                    else:
-                                        st.warning("Please add at least 2 historical variants (e.g., Yusuf Ali, Pickthall) to compare.")
-                        
                         st.divider()
                         st.markdown("##### Historical Parallel Variants")
                         for tr in sc.get('translations', []):
                             c1, c2 = st.columns([1,4])
-                            if "AI Translation" in tr['name']:
-                                c1.text_input("Label", tr['name'], key=f"ln_{tr['id']}", disabled=True)
-                            else:
-                                tr['name'] = c1.selectbox("Label", LABELS, index=(LABELS.index(tr['name']) if tr['name'] in LABELS else 0), key=f"ln_{tr['id']}")
+                            tr['name'] = c1.selectbox("Label", LABELS, index=(LABELS.index(tr['name']) if tr['name'] in LABELS else 0), key=f"ln_{tr['id']}")
                             tr['text'] = c2.text_area("Variant Text", tr['text'], key=f"lt_{tr['id']}", height=68)
                         
                         if st.button("➕ Add Historical Variant", key=f"av_{sc['id']}"):

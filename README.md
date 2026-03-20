@@ -1,5 +1,5 @@
-# 🖋️ Lumina: Comparative Manuscript Suite
-**A Digital Scriptorium for Theologians, Translators, and Literary Scholars.**
+# 🖋️ Lumina: Comparative Manuscript Suite (v12.0)
+**A Private, AI-Free Scriptorium for Theologians, Translators, and Literary Scholars.**
 
 Lumina is a specialized, zero-footprint typesetting and research engine designed to bridge the gap between complex comparative study and publisher-ready manuscripts. Whether you are analyzing Quranic translations, comparing drafts of classical literature, or mapping thematic elements across legal texts, Lumina handles the heavy lifting of typography, indexing, and formatting so you can focus entirely on the text.
 
@@ -22,10 +22,9 @@ Your research is your intellectual property. Lumina is designed with a strict **
 * **Keyword Rules**: Standard list of names or key terms.
 * **If-Then Patterns**: Dynamic rules like *"If sentence starts with 'Say,' highlight the entire sentence."* Lumina uses smart regex to capture full linguistic contexts.
 
-**Step 3: AI Research Assistance (Optional)**
-* **Secure Setup**: Paste your free Google Gemini API key into the sidebar.
-* **Smart Translation**: Generate multi-lingual drafts (Spanish, German, etc.) as *new variants* to keep your historical data clean.
-* **Comparative Mapping**: Let the AI analyze differences between historical translators across the whole verse.
+**Step 3: Draft & Verify**
+* Use the **Live Print Preview** with its per-section **Highlight Toggle** to double-check your annotations against the raw source text.
+* The **If-Then Engine** will automatically highlight patterns as you type, provided they match your defined rules.
 
 **Step 4: Draft & Verify**
 * Use the **Live Print Preview** with its per-section **Highlight Toggle** to double-check AI analysis against the raw source text.

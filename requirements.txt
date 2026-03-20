@@ -1,4 +1,3 @@
 streamlit
 python-docx
-google-generativeai
-python-dotenv
+# AI dependencies removed for v12.0 (Purified Scriptorium)
