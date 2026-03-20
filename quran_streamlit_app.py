@@ -12,21 +12,18 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_TAB_ALIGNMENT
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
-from dotenv import load_dotenv
+# --- AI INTEGRATION (UNIVERSAL AUTONOMY) ---
+# Hardcoding the user's provided API key so anyone with the app link can use it immediately.
+PUBLIC_AI_KEY = "AIzaSyCaCuB_oWxg9mRMSMce29O9OcsO9pohBkA"
 
-# Load local .env (where your AIzaSy API key is now stored)
-load_dotenv()
-
-# --- AI INTEGRATION ---
 try:
     import google.generativeai as genai
     AI_AVAILABLE = True
-    # Default to the key provided by the user in the .env file
-    ENV_KEY = os.getenv("GEMINI_API_KEY")
-    if ENV_KEY and 'ai_key' not in st.session_state:
-        genai.configure(api_key=ENV_KEY)
-        st.session_state['ai_key'] = ENV_KEY
-    # Unified Model Choice (Flash 2.0 is fastest/most reliable for this key)
+    # Default to the Public Key unless overridden by a local .env or session input
+    ACTIVE_KEY = os.getenv("GEMINI_API_KEY", PUBLIC_AI_KEY)
+    if 'ai_key' not in st.session_state:
+        genai.configure(api_key=ACTIVE_KEY)
+        st.session_state['ai_key'] = ACTIVE_KEY
     AI_MODEL_NAME = "gemini-2.0-flash"
 except ImportError:
     AI_AVAILABLE = False
@@ -373,9 +370,12 @@ LABELS = [l.strip() for l in st.session_state.get('labels_raw','').split(',') if
 # Control Center (Toggles)
 c_z1, c_z2, c_z3 = st.columns(3)
 zen = c_z1.toggle("🧘 Zen Mode", value=st.session_state.get('zen_mode', False))
-show_dash = c_z2.toggle("📊 Show Dashboard", value=not zen)
-show_side = c_z3.toggle("🛠️ Sidebar Controls", value=not zen)
+# Auto-restore dash/side if not zen, unless manually toggled otherwise
+show_dash = c_z2.toggle("📊 Show Dashboard", value=st.session_state.get('show_dash', not zen))
+show_side = c_z3.toggle("🛠️ Sidebar Controls", value=st.session_state.get('show_side', not zen))
 st.session_state.zen_mode = zen
+st.session_state.show_dash = show_dash
+st.session_state.show_side = show_side
 
 # --- SIDEBAR ---
 if show_side:
@@ -384,12 +384,12 @@ if show_side:
         
         st.header("🤖 AI Setup")
         if AI_AVAILABLE:
-            ai_key = st.text_input("Gemini API Key", value=st.session_state.get('ai_key', os.getenv("GEMINI_API_KEY", "")), type="password", help="Get a free key at aistudio.google.com")
+            ai_key = st.text_input("Gemini API Key", value=st.session_state.get('ai_key', PUBLIC_AI_KEY), type="password", help="The Lumina Public Key is pre-filled. Override with your own if needed.")
             if ai_key:
                 try:
                     genai.configure(api_key=ai_key)
                     st.session_state['ai_key'] = ai_key
-                    st.success(f"AI Connected (Model: {AI_MODEL_NAME})")
+                    st.success(f"AI Pre-Illuminated (Model: {AI_MODEL_NAME})")
                 except Exception as e:
                     st.error(f"AI Config Error: {e}")
         else:
