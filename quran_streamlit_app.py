@@ -12,24 +12,24 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_TAB_ALIGNMENT
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
-# --- AI INTEGRATION (UNIVERSAL AUTONOMY) ---
-# Hardcoding the user's provided API key so anyone with the app link can use it immediately.
-PUBLIC_AI_KEY = "AIzaSyCaCuB_oWxg9mRMSMce29O9OcsO9pohBkA"
+# --- AI INTEGRATION (SECURITY-FIRST) ---
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 try:
     import google.generativeai as genai
     AI_AVAILABLE = True
-    # Default to the Public Key unless overridden by a local .env or session input
-    ACTIVE_KEY = os.getenv("GEMINI_API_KEY", PUBLIC_AI_KEY)
-    if 'ai_key' not in st.session_state:
-        genai.configure(api_key=ACTIVE_KEY)
-        st.session_state['ai_key'] = ACTIVE_KEY
-    # Flash 1.5 is generally more reliable for Free Tier quotas
-    AI_MODELS = [
-        "gemini-1.5-flash", 
-        "gemini-2.0-flash", 
-        "gemini-1.5-pro"
-    ]
+    # Default to the key provided by the user in the .env file
+    ENV_KEY = os.getenv("GEMINI_API_KEY")
+    if ENV_KEY and 'ai_key' not in st.session_state:
+        genai.configure(api_key=ENV_KEY)
+        st.session_state['ai_key'] = ENV_KEY
+    
+    # Standard Reliable Models
+    AI_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
 except ImportError:
     AI_AVAILABLE = False
 
@@ -389,15 +389,16 @@ if show_side:
         
         st.header("🤖 AI Setup")
         if AI_AVAILABLE:
-            ai_key = st.text_input("Gemini API Key", value=st.session_state.get('ai_key', PUBLIC_AI_KEY), type="password", help="The Lumina Public Key is pre-filled. Override with your own if needed.")
-            model_choice = st.selectbox("Optimized Model", AI_MODELS, index=0, help="Flash 1.5 is recommended for the Free Tier.")
+            st.info("💡 Get a free API key at [aistudio.google.com](https://aistudio.google.com/)")
+            ai_key = st.text_input("Gemini API Key", value=st.session_state.get('ai_key', os.getenv("GEMINI_API_KEY", "")), type="password", help="The previous public key was deactivated due to security leak detection. Please provide your own private key.")
+            model_choice = st.selectbox("Scholar's Model", AI_MODELS, index=0)
             st.session_state['ai_model'] = model_choice
             
             if ai_key:
                 try:
                     genai.configure(api_key=ai_key)
                     st.session_state['ai_key'] = ai_key
-                    st.success(f"AI Pre-Illuminated (Model: {model_choice})")
+                    st.success(f"AI Authenticated (Model: {model_choice})")
                 except Exception as e:
                     st.error(f"AI Config Error: {e}")
         else:
