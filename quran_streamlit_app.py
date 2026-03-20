@@ -445,7 +445,10 @@ if show_dash:
     st.divider()
 
 # --- TABS ---
-t1, t2 = st.tabs(["📝 Manuscript Builder", "🕸️ Knowledge Web"]) if not zen else st.tabs(["📝 Zen Mode Active", "🕸️ Disabled"])
+if not zen:
+    t1, t2, t3 = st.tabs(["📝 Manuscript Builder", "🕸️ Knowledge Web", "📖 User Guide"])
+else:
+    t1, t2, t3 = st.tabs(["📝 Zen Mode Active", "🕸️ Disabled", "📖 Disabled"])
 
 with t1:
     for ci, ch in enumerate(st.session_state.chapters):
@@ -505,10 +508,51 @@ with t1:
             s = build_secure_manuscript(mt, st.session_state.chapters, st.session_state.rules)
             st.download_button("📥 Download (.docx)", s, f"{mt['title'].replace(' ','_')}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
 
-with t2:
+with t3:
     if not zen:
-        st.info("🕸️ The Knowledge Web is under construction for If-Then rule compatibility.")
+        st.title("📖 Lumina Official User Guide")
+        st.markdown("""
+        **Welcome to Lumina: The Comparative Manuscript Suite.** This application is designed as a "Digital Scriptorium" to help scholars, theologians, and researchers build complex, publisher-ready comparative manuscripts with zero friction.
+
+        ---
+
+        ### 🛡️ Core Philosophy: Zero-Footprint Security
+        Your research is your intellectual property. Lumina uses a **Zero-Footprint Architecture**:
+        * Documents are generated entirely in your browser's RAM. 
+        * No manuscript data is ever saved to an external database.
+        * Your work is silently auto-saved to your local machine (`autosave_lumina_project.json`).
+
+        ---
+
+        ### ⚙️ Step 1: Project Setup (The Sidebar)
+        1. **Metadata:** Enter your Book Title, Author Name, and Copyright Year. This information automatically populates the KDP Title and Copyright pages upon export.
+        2. **Language Formatting:** If your Primary Source Text is Arabic, Hebrew, or another RTL language, toggle **"Primary Text is RTL"**. Lumina will automatically inject native Right-to-Left XML into your final Word document to ensure perfect calligraphy formatting.
+        3. **Custom Labels:** Enter a comma-separated list of the historical translations you use most frequently (e.g., *Yusuf Ali, Pickthall, Sahih*). These will dynamically populate the dropdown menus inside the builder.
+
+        ---
+
+        ### 🎨 Step 2: The Rule Engine (Color Taxonomy)
+        You can color-code your manuscript automatically using two different engines:
+        
+        * **Option A: Keyword List** Create a category (e.g., *Attributes of God*), pick a color, and paste a list of words. Lumina uses smart word-boundaries to highlight them dynamically across the entire book.
+        * **Option B: If-Then (Starts With) Rule**
+          Create a category for complex grammatical structures (e.g., *Divine Commands*). If you type the trigger word `Say,`, the engine will highlight everything from that word until the end of the sentence (stopping at periods, exclamation marks, or Arabic question marks `؟`).
+
+        ---
+
+        ### 📝 Step 3: Drafting & The Live Preview
+        Your manuscript is organized into **Chapters** which contain **Sections** (verses/paragraphs).
+        
+        * **Editing:** Paste your immutable original text into the "Source Text" box. Then, add as many Historical Variants (translations) as you need. 
+        * **Live Preview:** Click the `👁️ Live Preview` tab inside any section. You can see your highlighted text and typography exactly as it will appear in the final book. You can toggle the highlights on or off using the **🎨 Enable Taxonomy Highlighting** switch.
+
+        ---
+
+        ### 🚀 Step 4: Exporting & Publishing
+        Click the **🚀 COMPILE MASTER MANUSCRIPT** button. 
+        Lumina will instantly generate an Amazon KDP-compliant Microsoft Word `.docx` file featuring a Title Page, Copyright Page, Color Key, Hierarchical Chapters, a 60/40 Split Parallel Layout, and a fully indexed Auto-Concordance in the Appendix.
+        """)
     else:
-        st.info("🕸️ The Knowledge Web is disabled while Zen Mode is active.")
+        st.info("📖 The User Guide is disabled while Zen Mode is active.")
 
 trigger_autosave()
