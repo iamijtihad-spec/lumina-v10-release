@@ -362,7 +362,7 @@ LABELS = [l.strip() for l in st.session_state.get('labels_raw','').split(',') if
 c_z1, c_z2, c_z3 = st.columns(3)
 zen = c_z1.toggle("🧘 Zen Mode", value=st.session_state.get('zen_mode', False))
 show_dash = c_z2.toggle("📊 Show Dashboard", value=st.session_state.get('show_dash', not zen))
-show_side = c_z3.toggle("🛠️ Sidebar Controls", value=st.session_state.get('show_side', not zen))
+show_side = c_z3.toggle("🛠️ Sidebar Controls", value=st.session_state.get('show_side', True))
 st.session_state.zen_mode = zen
 st.session_state.show_dash = show_dash
 st.session_state.show_side = show_side
@@ -370,6 +370,7 @@ st.session_state.show_side = show_side
 # --- SIDEBAR ---
 if show_side:
     with st.sidebar:
+        st.markdown("### 🏛️ Al-Qalam Scriptorium")
         st.caption("🌙 Dark Mode Active" if is_dark_mode else "☀️ Light Mode Active")
         st.divider(); st.header("📚 Project Details")
         st.session_state.b_title = st.text_input("Project Title", st.session_state.get('b_title', "Comparative Study"))
