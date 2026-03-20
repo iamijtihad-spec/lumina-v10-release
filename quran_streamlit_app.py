@@ -392,9 +392,16 @@ if 'chapters' not in st.session_state:
         st.session_state.is_rtl, st.session_state.labels_raw = False, "Yusuf Ali, Sahih, Variant A"
 
 LABELS = [l.strip() for l in st.session_state.get('labels_raw','').split(',') if l.strip()] + ["Custom..."]
-zen = st.toggle("🧘 Zen Mode")
 
-if not zen:
+# Control Center (Toggles)
+c1, c2, c3 = st.columns(3)
+zen = c1.toggle("🧘 Zen Mode", value=st.session_state.get('zen_mode', False))
+show_dash = c2.toggle("📊 Show Dashboard", value=not zen)
+show_side = c3.toggle("🛠️ Sidebar Controls", value=not zen)
+
+st.session_state.zen_mode = zen
+
+if show_side:
     with st.sidebar:
         if is_dark_mode:
             st.caption("🌙 Dark Mode Active")
@@ -471,7 +478,7 @@ if not zen:
             st.download_button("⬇️ Export Full Project (.json)", json.dumps(pd, indent=4), file_name="Project.json")
         st.success("🟢 Auto-Save Active")
 
-if not zen:
+if show_dash:
     st.markdown("### 📊 Scholar's Dashboard")
     cs = st.columns(4)
     tot_s = sum(len(c.get('sections',[])) for c in st.session_state.chapters)
