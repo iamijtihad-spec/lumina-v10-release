@@ -424,6 +424,26 @@ if show_side:
             pd = {"metadata":{"title":st.session_state.b_title,"author":st.session_state.b_author,"year":st.session_state.b_year,"is_rtl":st.session_state.is_rtl,"custom_labels":st.session_state.labels_raw},"rules":st.session_state.rules,"chapters":st.session_state.chapters}
             st.download_button("⬇️ Export Full Project (.json)", json.dumps(pd, indent=4), file_name="Project.json")
 
+        # ==========================================
+        # SUPPORT & DONATION INTEGRATION
+        # ==========================================
+        st.divider()
+        st.header("☕ Support the Project")
+        st.markdown(
+            "<p style='font-size: 13px; opacity: 0.8;'>"
+            "If Lumina has helped your research or workflow, consider supporting its continued development!</p>", 
+            unsafe_allow_html=True
+        )
+        
+        # Injected Patreon Badge
+        st.markdown("""
+        <div style="display: flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 10px;">
+            <a href="https://www.patreon.com/enki33" target="_blank">
+                <img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" alt="Become a Patron" style="height: 40px !important; border-radius: 8px; box-shadow: 0px 2px 5px rgba(0,0,0,0.1);" >
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+
 # --- DASHBOARD ---
 if show_dash:
     st.markdown("### 📊 Scholar's Dashboard")
