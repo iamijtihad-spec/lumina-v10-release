@@ -1,0 +1,74 @@
+{
+    "metadata": {
+        "title": "Comparative Quranic Study",
+        "author": "Shaheed A. Muhammad",
+        "year": "2026"
+    },
+    "rules": [
+        {
+            "name": "Allah",
+            "hex_code": "#B8860B",
+            "keywords": [
+                "Allah",
+                "God"
+            ]
+        },
+        {
+            "name": "Attributes",
+            "hex_code": "#1A237E",
+            "keywords": [
+                "Merciful",
+                "The Most",
+                "Merciful",
+                "The Most or Entirely Merciful",
+                "The Especially Merciful",
+                "The King and Owner of Dominion",
+                "The Absolutely Pure and Perfect",
+                "The Perfection and Giver of Peace",
+                "The Granter of Security and Faith",
+                "The Guardian",
+                "The Witness",
+                "The Overseer",
+                "The Almighty",
+                "The All-Powerful",
+                "The Invincible",
+                "The Honorable",
+                "The Compeller",
+                "The Restorer",
+                "The Supreme",
+                "The Majestic",
+                "The Creator",
+                "The Maker",
+                "The Originator",
+                "The Inventor"
+            ]
+        }
+    ],
+    "chapters": [
+        {
+            "id": "78e45ac0-4225-43bc-b423-2e0e75bd7650",
+            "title": "Surah 1: Al-Fatiha",
+            "sections": [
+                {
+                    "id": "3353c605-ee8b-4d25-ae9a-af14a52974b7",
+                    "title": "Al-Fatiha",
+                    "arabic_text": "\n\u0627\u0644\u0631\u064e\u0651\u062d \u0650 \u064a\u0645\u0650 \u0627\u0644\u0631\u064e\u0651\u062d \u0652 \u0645\u0650\u0646\u2028\u0628\u0650\u0633 \u064f \u0645\u0650 -\u2028\u0627\u0644\u0644\u0647\u0650\u2028\u2028\u0627\u0644\u0652\u0639\u064e\u0644\u064e\u0645\u0650\u064a\u0646\u064e \u0631\u064e\u0628 \u0650\u0651 \u0644\u0644\u0647\u0650\u0650\u0652 \u0627\u0644\u0652\u062d \u064e \u0645 \u0652 \u0644 \u064f -\u0662\u2028\u2028\u0627\u0644\u0632\u064e\u0651\u062d \u0650 \u064a\u064f\u0645\u0650 \u0627\u0644\u0631\u064e\u0651\u062d \u0652 \u0645 \u0652 \u0646 -\u0663\u2028\u2028\u0665 \u0627\u0644\u062f\u0650\u064a\u0652\u0646 \u064a\u064e\u0648\u0652\u0645\u0650 \u0637\u0644\u0650\u0643 \u0650 -\u0663 \u0665 \u0646\u064e\u0633 \u0652 \u062a\u064e\u0639 \u0650 \u064a\u0646 \u0652 \u064f \u0648\u064e \u0625\u0650\u064a\u064e\u0651\u0627\u0643 \u064e \u0625\u0650\u064a\u064e\u0651\u0627\u0643 \u064e\u2028\u2028\u0629 \u0627\u0644\u0645 \u0652 \u064f\u0633 \u0652 \u062a\u064e\u0642\u0650\u064a\u0652\u0645\u064e \u0627\u0644\u0635 \u0650 \u0631\u064e\u0627\u0637\u064e \u0627\u0650\u0647\u0652\u062f\u0650\u0646\u064e\u0627 -\u0666\u2028\u2028\u063a\u064e\u064a\u0652\u0631 \u0639\u064e\u0644\u064e\u064a\u0652\u0647\u0650\u0645 \u0652 \u0647\u064f \u0627\u064e\u0646\u0652\u0639\u064e\u0645 \u0652 \u062a \u064e \u0627\u0644\u064e\u0630\u0650\u064a\u064f\u0646\u064e \u0635 \u0650 \u0631\u064e\u0627\u0637\u064e -\u060c 8 \u0627\u0644\u0636 \u064e\u0651 \u0627\u0644\u0650\u064a\u0646 \u0652 \u064e \u0648\u064e\u0644\u0627 \u064e \u0639\u064e\u0644\u064e\u064a\u0652\u0647\u0650\u0645\u0652 \u0627\u0644\u0645 \u0652 \u064e\u063a\u0652\u0636 \u064f \u0648\u0628 \u0650\u2028\n\n",
+                    "translations": [
+                        {
+                            "id": "1be06c9d-9f0e-405f-a0ad-6c94309fb237",
+                            "name": "Yusuf Ali",
+                            "text": ""
+                        }
+                    ],
+                    "commentary": "",
+                    "sources": [
+                        {
+                            "id": "142774a8-ce27-45db-a696-717c4bea92c2",
+                            "text": ""
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
