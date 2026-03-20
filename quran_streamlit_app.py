@@ -12,11 +12,22 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_TAB_ALIGNMENT
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
+from dotenv import load_dotenv
+
+# Load local .env (where your AIzaSy API key is now stored)
+load_dotenv()
 
 # --- AI INTEGRATION ---
 try:
     import google.generativeai as genai
     AI_AVAILABLE = True
+    # Default to the key provided by the user in the .env file
+    ENV_KEY = os.getenv("GEMINI_API_KEY")
+    if ENV_KEY and 'ai_key' not in st.session_state:
+        genai.configure(api_key=ENV_KEY)
+        st.session_state['ai_key'] = ENV_KEY
+    # Unified Model Choice (Flash 2.0 is fastest/most reliable for this key)
+    AI_MODEL_NAME = "gemini-2.0-flash"
 except ImportError:
     AI_AVAILABLE = False
 
@@ -88,7 +99,6 @@ def load_rules_from_json():
     try:
         with open(RULES_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # Ensure backwards compatibility for older saves missing the 'type' field
             for r in data:
                 if 'type' not in r: r['type'] = 'keyword'
                 r['color'] = hex_to_rgb(r.get('hex_code', '#000000'))
@@ -118,7 +128,6 @@ def trigger_autosave():
         json.dump(project_data, f, indent=4)
 
 def build_master_regex(rules):
-    """Compiles both Keyword Lists and If-Then Patterns into a single named-group regex."""
     pattern_parts = []
     for i, r in enumerate(rules):
         if r.get('type') == 'pattern' and r.get('pattern'):
@@ -163,7 +172,6 @@ def generate_html_preview(text, rules, is_rtl=False, dark_mode=False, enable_hig
     if enable_highlights:
         master_pattern = build_master_regex(rules)
         if master_pattern:
-            # We replace matches backwards so index shifts don't ruin upcoming replacements
             matches = list(master_pattern.finditer(escaped_text))
             for match in reversed(matches):
                 if match.lastgroup:
@@ -376,11 +384,14 @@ if show_side:
         
         st.header("🤖 AI Setup")
         if AI_AVAILABLE:
-            ai_key = st.text_input("Gemini API Key", type="password", help="Get a free key at aistudio.google.com")
+            ai_key = st.text_input("Gemini API Key", value=st.session_state.get('ai_key', os.getenv("GEMINI_API_KEY", "")), type="password", help="Get a free key at aistudio.google.com")
             if ai_key:
-                genai.configure(api_key=ai_key)
-                st.session_state['ai_key'] = ai_key
-                st.success("AI Connected")
+                try:
+                    genai.configure(api_key=ai_key)
+                    st.session_state['ai_key'] = ai_key
+                    st.success(f"AI Connected (Model: {AI_MODEL_NAME})")
+                except Exception as e:
+                    st.error(f"AI Config Error: {e}")
         else:
             st.warning("⚠️ AI module 'google-generativeai' not installed.")
             
@@ -441,7 +452,7 @@ if show_side:
 # --- DASHBOARD ---
 if show_dash:
     st.markdown("### 📊 Scholar's Dashboard")
-    cs = st.columns(4)
+    cs = st.columns(5)
     tot_s = sum(len(c.get('sections',[])) for c in st.session_state.chapters)
     
     master_pattern = build_master_regex(st.session_state.rules)
@@ -456,6 +467,7 @@ if show_dash:
     cs[1].metric("Sections", tot_s)
     cs[2].metric("Taxonomies", len(st.session_state.rules))
     cs[3].metric("Illuminations", ic)
+    cs[4].metric("AI Status", "Ready" if st.session_state.get('ai_key') else "Offline")
     st.divider()
 
 # --- TABS ---
@@ -488,7 +500,7 @@ with t1:
                                     if sc['source_text']:
                                         with st.spinner("Translating safely in background..."):
                                             try:
-                                                model = genai.GenerativeModel('gemini-pro')
+                                                model = genai.GenerativeModel(AI_MODEL_NAME)
                                                 prompt = f"Translate the following text into highly accurate, academic {target_lang}. Maintain theological/literary nuance. Source text: {sc['source_text']}"
                                                 response = model.generate_content(prompt)
                                                 sc['translations'].append({"id":str(uuid.uuid4()), "name":f"AI Translation ({target_lang})", "text":response.text.strip()})
@@ -502,7 +514,8 @@ with t1:
                                     if len(human_variants) >= 2:
                                         with st.spinner("Analyzing historical nuances..."):
                                             try:
-                                                model = genai.GenerativeModel('gemini-pro')
+                                                # Optimization: Provide specific context to model
+                                                model = genai.GenerativeModel(AI_MODEL_NAME)
                                                 vars_text = "\n".join([f"[{t['name']}]: {t['text']}" for t in human_variants])
                                                 prompt = f"Act as a comparative theology scholar. Analyze the linguistic and theological nuances between these historical translations of a single verse. Keep it concise, academic, and highlight specific word choice differences.\n\nTranslations:\n{vars_text}"
                                                 response = model.generate_content(prompt)
@@ -545,7 +558,7 @@ with t1:
                     
         if not zen:
             if st.button(f"📜 + Add Section", key=f"as_{ch['id']}"):
-                ch['sections'].append({"id":str(uuid.uuid4()), "title":f"Section {len(ch['sections'])+1}", "source_text":"", "translations":[{"id":str(uuid.uuid4()), "name":LABELS[0], "text":""}], "commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}); st.rerun()
+                ch['sections'].append({"id":str(uuid.uuid4()), "title":f"Section {len(ch['sections'])+1}", "source_text":"", "translations":[{"id":str(uuid.uuid4()), "name":"Yusuf Ali", "text":""}], "commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}); st.rerun()
         st.divider()
         
     if not zen:

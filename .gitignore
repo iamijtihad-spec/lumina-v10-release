@@ -6,3 +6,4 @@ taxonomy_rules.json
 autosave_lumina_project.json
 Project.json
 *.docx
+.env
