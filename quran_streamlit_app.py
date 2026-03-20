@@ -13,15 +13,18 @@ from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
 
+# --- AI INTEGRATION ---
+try:
+    import google.generativeai as genai
+    AI_AVAILABLE = True
+except ImportError:
+    AI_AVAILABLE = False
+
 # ==========================================
-# PAGE CONFIG 
+# PAGE CONFIG & UI SYSTEM
 # ==========================================
 st.set_page_config(page_title="Lumina: Comparative Manuscript Suite", layout="wide")
 
-# ==========================================
-# TIME-BASED MACOS UI/UX INJECTION
-# ==========================================
-# Determine if it is Dark Mode based on time (7 PM to 7 AM is Dark Mode)
 current_hour = datetime.datetime.now().hour
 is_dark_mode = current_hour < 7 or current_hour >= 19
 
@@ -35,13 +38,10 @@ if is_dark_mode:
         header, #MainMenu, footer { visibility: hidden; }
         [data-testid="stSidebar"] { background: rgba(40, 40, 40, 0.6) !important; backdrop-filter: blur(24px); border-right: 1px solid rgba(255, 255, 255, 0.1); }
         .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div { background-color: rgba(60, 60, 60, 0.8) !important; color: white !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; border-radius: 12px !important; }
-        .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus { border: 1px solid #0a84ff !important; box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.15) !important; }
         .stButton>button { background: #2c2c2e; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #f5f5f7; }
-        .stButton>button:hover { background: #3a3a3c; transform: translateY(-1px); }
         .stButton>button[kind="primary"] { background: linear-gradient(180deg, #0a84ff 0%, #0060c0 100%); color: white !important; border: none; }
         .streamlit-expanderHeader { background-color: rgba(60,60,60,0.5); border-radius: 12px; font-weight: 600; color: #f5f5f7; }
         [data-testid="stExpander"] { background-color: rgba(40, 40, 40, 0.6); backdrop-filter: blur(10px); border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
-        [data-testid="stMetricValue"], [data-testid="stMetricLabel"] { color: #f5f5f7; }
     </style>
     """
 else:
@@ -54,20 +54,16 @@ else:
         header, #MainMenu, footer { visibility: hidden; }
         [data-testid="stSidebar"] { background: rgba(255, 255, 255, 0.6) !important; backdrop-filter: blur(24px); border-right: 1px solid rgba(0, 0, 0, 0.05); }
         .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div { background-color: rgba(255, 255, 255, 0.8) !important; border: 1px solid rgba(0, 0, 0, 0.08) !important; border-radius: 12px !important; }
-        .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus { border: 1px solid #0066cc !important; box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.15) !important; }
         .stButton>button { background: #ffffff; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; color: #1d1d1f; font-weight: 500; }
-        .stButton>button:hover { background: #fdfdfd; transform: translateY(-1px); }
         .stButton>button[kind="primary"] { background: linear-gradient(180deg, #007aff 0%, #0056b3 100%); color: white !important; border: none; }
         .streamlit-expanderHeader { background-color: rgba(255,255,255,0.5); border-radius: 12px; font-weight: 600; }
         [data-testid="stExpander"] { background-color: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); border-radius: 16px; border: 1px solid rgba(0,0,0,0.05); }
-        [data-testid="stMetricValue"] { color: #1d1d1f; }
-        [data-testid="stMetricLabel"] { color: #86868b; }
     </style>
     """
 st.markdown(ui_css, unsafe_allow_html=True)
 
 # ==========================================
-# PERSISTENCE & AUTOSAVE HELPERS
+# HELPERS & PERSISTENCE
 # ==========================================
 RULES_FILE = "taxonomy_rules.json"
 AUTOSAVE_FILE = "autosave_lumina_project.json"
@@ -79,8 +75,11 @@ def hex_to_rgb(hex_code):
     except:
         return RGBColor(26, 35, 126)
 
+def is_arabic(text):
+    return any('\u0600' <= c <= '\u06FF' for c in text)
+
 def save_rules_to_json(rules):
-    serializable = [{'name': r['name'], 'hex_code': r.get('hex_code', '#000000'), 'keywords': r['keywords']} for r in rules]
+    serializable = [{'name': r['name'], 'hex_code': r.get('hex_code', '#000000'), 'type': r.get('type', 'keyword'), 'keywords': r.get('keywords', []), 'pattern': r.get('pattern', '')} for r in rules]
     with open(RULES_FILE, "w", encoding="utf-8") as f:
         json.dump(serializable, f, indent=4)
 
@@ -89,15 +88,19 @@ def load_rules_from_json():
     try:
         with open(RULES_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            return [{'name': r['name'], 'color': hex_to_rgb(r['hex_code']), 'hex_code': r['hex_code'], 'keywords': r['keywords']} for r in data]
+            # Ensure backwards compatibility for older saves missing the 'type' field
+            for r in data:
+                if 'type' not in r: r['type'] = 'keyword'
+                r['color'] = hex_to_rgb(r.get('hex_code', '#000000'))
+            return data
     except: return []
 
 def load_autosave():
-    if not os.path.exists(AUTOSAVE_FILE): return None
-    try:
-        with open(AUTOSAVE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except: return None
+    if os.path.exists(AUTOSAVE_FILE):
+        try:
+            with open(AUTOSAVE_FILE, "r", encoding="utf-8") as f: return json.load(f)
+        except: pass
+    return None
 
 def trigger_autosave():
     project_data = {
@@ -106,13 +109,35 @@ def trigger_autosave():
             "author": st.session_state.get('b_author', ''), 
             "year": st.session_state.get('b_year', ''),
             "is_rtl": st.session_state.get('is_rtl', False),
-            "custom_labels": st.session_state.get('labels_raw', 'Variant A, Variant B, Commentary')
+            "custom_labels": st.session_state.get('labels_raw', 'Yusuf Ali, Sahih International, Pickthall')
         },
-        "rules": [{'name': r['name'], 'hex_code': r['hex_code'], 'keywords': r['keywords']} for r in st.session_state.rules],
+        "rules": [{'name': r['name'], 'hex_code': r['hex_code'], 'type': r.get('type', 'keyword'), 'keywords': r.get('keywords', []), 'pattern': r.get('pattern', '')} for r in st.session_state.rules],
         "chapters": st.session_state.chapters
     }
     with open(AUTOSAVE_FILE, "w", encoding="utf-8") as f:
         json.dump(project_data, f, indent=4)
+
+def build_master_regex(rules):
+    """Compiles both Keyword Lists and If-Then Patterns into a single named-group regex."""
+    pattern_parts = []
+    for i, r in enumerate(rules):
+        if r.get('type') == 'pattern' and r.get('pattern'):
+            pattern_parts.append(rf"(?P<rule_{i}>{r['pattern']})")
+        else:
+            kws = r.get('keywords', [])
+            if kws:
+                kws = sorted([k.strip() for k in kws if k.strip()], key=len, reverse=True)
+                group_pats = []
+                for kw in kws:
+                    escaped = re.escape(kw)
+                    if is_arabic(kw): group_pats.append(escaped)
+                    else: group_pats.append(r'(?<![a-zA-Z])' + escaped + r'(?![a-zA-Z])')
+                if group_pats:
+                    pattern_parts.append(rf"(?P<rule_{i}>" + "|".join(group_pats) + ")")
+    
+    if pattern_parts:
+        return re.compile("|".join(pattern_parts), re.IGNORECASE)
+    return None
 
 # ==========================================
 # XML INJECTORS
@@ -131,96 +156,39 @@ def illuminate_run(run, hex_color):
 # ==========================================
 # HTML LIVE PREVIEW GENERATOR
 # ==========================================
-def generate_html_preview(text, rules, is_rtl=False, dark_mode=False):
+def generate_html_preview(text, rules, is_rtl=False, dark_mode=False, enable_highlights=True):
     if not text: return ""
-    all_kws = []
-    for r in rules:
-        for kw in r['keywords']:
-            clean_kw = kw.strip()
-            if clean_kw: all_kws.append((clean_kw, r.get('hex_code', '#000000')))
-    all_kws.sort(key=lambda x: len(x[0]), reverse=True)
-
     escaped_text = text.replace('\n', '<br>')
-    for kw, hex_code in all_kws:
-        h_style = f'color: {hex_code}; font-weight: bold;'
-        escaped_text = re.sub(f'({re.escape(kw)})', rf'<span style="{h_style}">\1</span>', escaped_text, flags=re.IGNORECASE)
+    
+    if enable_highlights:
+        master_pattern = build_master_regex(rules)
+        if master_pattern:
+            # We replace matches backwards so index shifts don't ruin upcoming replacements
+            matches = list(master_pattern.finditer(escaped_text))
+            for match in reversed(matches):
+                if match.lastgroup:
+                    rule_idx = int(match.lastgroup.split('_')[1])
+                    hex_code = rules[rule_idx].get('hex_code', '#000000')
+                    start, end = match.span()
+                    matched_str = escaped_text[start:end]
+                    
+                    h_style = f'color: {hex_code}; font-weight: bold;'
+                    replacement = f'<span style="{h_style}">{matched_str}</span>'
+                    escaped_text = escaped_text[:start] + replacement + escaped_text[end:]
             
     align = "right" if is_rtl else "left"
     font = "'Traditional Arabic', Arial, sans-serif" if is_rtl else "Georgia, serif"
     size = "22px" if is_rtl else "18px"
     direction = "rtl" if is_rtl else "ltr"
     
-    # Adapt Preview colors based on Light/Dark Mode
     bg_color = "#2c2c2e" if dark_mode else "#f9f9f9"
     text_color = "#f5f5f7" if dark_mode else "black"
     border_color = "#555555" if dark_mode else "#dddddd"
     
-    return f'<div style="text-align: {align}; font-family: {font}; font-size: {size}; direction: {direction}; line-height: 1.6; padding: 10px; background: {bg_color}; border-left: 4px solid {border_color}; margin-bottom: 10px; color: {text_color}; border-radius: 8px;">{escaped_text}</div>'
+    return f'<div style="text-align: {align}; font-family: {font}; font-size: {size}; direction: {direction}; line-height: 1.6; padding: 12px; background: {bg_color}; border-left: 4px solid {border_color}; margin-bottom: 10px; color: {text_color}; border-radius: 8px;">{escaped_text}</div>'
 
 # ==========================================
-# KNOWLEDGE WEB ENGINE (VIS.JS)
-# ==========================================
-def render_interactive_concordance(chapters, rules):
-    nodes = []
-    edges = []
-    for i, r in enumerate(rules):
-        nodes.append({"id": f"rule_{i}", "label": r['name'], "color": r.get('hex_code', '#333'), "font": {"color": "white"}, "shape": "box"})
-        
-    all_kws = []
-    for i, r in enumerate(rules):
-        for kw in r['keywords']:
-            if kw.strip(): all_kws.append((kw.strip(), f"rule_{i}"))
-    all_kws.sort(key=lambda x: len(x[0]), reverse=True)
-
-    keyword_lookup = {kw.lower(): rule_id for kw, rule_id in all_kws}
-    pattern_parts = [re.escape(kw) for kw, _ in all_kws]
-    master_pattern = re.compile(r'(' + '|'.join(pattern_parts) + r')', re.IGNORECASE) if pattern_parts else None
-
-    if master_pattern:
-        for c in chapters:
-            if 'sections' not in c: continue
-            for s in c['sections']:
-                sec_id = f"sec_{s['id']}"
-                nodes.append({"id": sec_id, "label": f"{c['title']}\n{s['title']}", "color": "#e0e0e0", "shape": "ellipse"})
-                src_txt = s.get('source_text', s.get('arabic_text',''))
-                all_text = " ".join([str(src_txt), str(s.get('commentary', ''))] + [str(t.get('text', '')) for t in s.get('translations', [])])
-                found_rules = set()
-                for match in master_pattern.finditer(all_text):
-                    r_id = keyword_lookup.get(match.group().lower())
-                    if r_id: found_rules.add(r_id)
-                for r_id in found_rules:
-                    edges.append({"from": sec_id, "to": r_id})
-
-    # Adjust Web Background for Dark Mode
-    bg_web = "#1c1c1e" if is_dark_mode else "#ffffff"
-
-    html_code = f"""
-    <html>
-    <head>
-        <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-        <style type="text/css">#mynetwork {{width: 100%; height: 600px; border: 1px solid rgba(150,150,150,0.3); background-color: {bg_web}; border-radius: 12px;}}</style>
-    </head>
-    <body style="margin: 0; padding: 0;">
-        <div id="mynetwork"></div>
-        <script type="text/javascript">
-            const nodes = new vis.DataSet({json.dumps(nodes)});
-            const edges = new vis.DataSet({json.dumps(edges)});
-            const container = document.getElementById('mynetwork');
-            const data = {{nodes: nodes, edges: edges}};
-            const options = {{
-                nodes: {{borderWidth: 2, size: 30}},
-                edges: {{color: 'lightgray', smooth: true}},
-                physics: {{barnesHut: {{gravitationalConstant: -2000, centralGravity: 0.3, springLength: 150}}}}
-            }};
-            const network = new vis.Network(container, data, options);
-        </script>
-    </body>
-    </html>
-    """
-    components.html(html_code, height=620)
-
-# ==========================================
-# TYPESETTING ENGINE (UNIVERSAL DOCX)
+# TYPESETTING ENGINE
 # ==========================================
 def initialize_universal_styles(doc, is_rtl=False):
     section = doc.sections[0]
@@ -268,21 +236,13 @@ def initialize_universal_styles(doc, is_rtl=False):
     conc.font.size = Pt(11)
     conc.paragraph_format.tab_stops.add_tab_stop(Inches(4.5), WD_TAB_ALIGNMENT.RIGHT, WD_TAB_LEADER.DOTS)
 
-def build_secure_manuscript(metadata, chapters_data, categories_data):
+def build_secure_manuscript(metadata, chapters_data, rules):
     doc = Document()
     is_rtl = metadata.get('is_rtl', False)
     initialize_universal_styles(doc, is_rtl)
 
-    all_kws = []
-    for cat in categories_data:
-        for kw in cat['keywords']:
-            if kw.strip(): all_kws.append((kw.strip(), cat['name'], cat.get('hex_code', '#000000')))
-    all_kws.sort(key=lambda x: len(x[0]), reverse=True)
-
-    keyword_lookup = {kw.lower(): {'category': cat, 'original': kw, 'hex_code': hex} for kw, cat, hex in all_kws}
-    pattern_parts = [re.escape(kw) for kw, _, _ in all_kws]
-    master_pattern = re.compile(r'(' + '|'.join(pattern_parts) + r')', re.IGNORECASE) if pattern_parts else None
-    concordance = {cat['name']: {} for cat in categories_data}
+    master_pattern = build_master_regex(rules)
+    concordance = {r['name']: {} for r in rules}
 
     def process_and_style(text, style_name, index_ref, p=None, force_rtl=False):
         if not text: return
@@ -291,18 +251,24 @@ def build_secure_manuscript(metadata, chapters_data, categories_data):
         if not master_pattern:
             p.add_run(text)
             return
+            
         last_idx = 0
         for match in master_pattern.finditer(text):
             start, end = match.span()
             matched = match.group()
+            rule_idx = int(match.lastgroup.split('_')[1])
+            rule = rules[rule_idx]
+            
             if start > last_idx: p.add_run(text[last_idx:start])
+            
             run = p.add_run(matched)
-            k_info = keyword_lookup.get(matched.lower())
-            if k_info:
-                illuminate_run(run, k_info['hex_code'])
-                cat, orig = k_info['category'], k_info['original']
-                if orig not in concordance[cat]: concordance[cat][orig] = set()
-                concordance[cat][orig].add(index_ref)
+            illuminate_run(run, rule.get('hex_code', '#000000'))
+            
+            cat_name = rule['name']
+            orig_match = matched.strip()
+            if orig_match not in concordance[cat_name]: concordance[cat_name][orig_match] = set()
+            concordance[cat_name][orig_match].add(index_ref)
+            
             last_idx = end
         if last_idx < len(text): p.add_run(text[last_idx:])
 
@@ -317,11 +283,13 @@ def build_secure_manuscript(metadata, chapters_data, categories_data):
 
     # 2. Key
     doc.add_heading("Research Taxonomy: Color Key", level=1)
-    for cat in categories_data:
+    for rule in rules:
         p_label = doc.add_paragraph()
-        run = p_label.add_run(f"  {cat['name'].upper()}  ")
-        run.font.color.rgb = hex_to_rgb(cat.get('hex_code', '#000000'))
+        run = p_label.add_run(f"  {rule['name'].upper()}  ")
+        run.font.color.rgb = hex_to_rgb(rule.get('hex_code', '#000000'))
         run.font.bold = True; run.font.size = Pt(13)
+        if rule.get('type') == 'pattern':
+            doc.add_paragraph(f"  (If-Then Rule: Matches '{rule.get('pattern')}')", style='AcadCommentary')
     doc.add_page_break()
 
     # 3. Content
@@ -336,10 +304,12 @@ def build_secure_manuscript(metadata, chapters_data, categories_data):
             hdr.alignment = WD_ALIGN_PARAGRAPH.CENTER
             tbl = doc.add_table(rows=1, cols=2)
             tbl.autofit = False; tbl.columns[0].width = Inches(3.2); tbl.columns[1].width = Inches(2.3)
+            
             s_text = sec.get('source_text', sec.get('arabic_text',''))
             if s_text:
                 p_src = tbl.rows[0].cells[1].paragraphs[0]
                 p_src.style = 'SourceText'; process_and_style(s_text, 'SourceText', i_ref, p_src, force_rtl=is_rtl)
+            
             f_trans = True
             for tr in sec.get('translations', []):
                 if tr.get('text'):
@@ -347,6 +317,7 @@ def build_secure_manuscript(metadata, chapters_data, categories_data):
                     p_tag.style = 'VarTag'; f_trans = False; p_tag.add_run(f"[{tr['name']}]")
                     p_b = tbl.rows[0].cells[0].add_paragraph(style='ParallelContent')
                     process_and_style(tr['text'], 'ParallelContent', i_ref, p_b)
+            
             if sec.get('commentary') or any(s['text'] for s in sec.get('sources',[])):
                 doc.add_paragraph("________________________________________")
                 if sec.get('commentary'):
@@ -357,24 +328,22 @@ def build_secure_manuscript(metadata, chapters_data, categories_data):
                         if s['text']: process_and_style(s['text'], 'AcadCommentary', i_ref)
             doc.add_page_break()
 
-    # 4. Conc
+    # 4. Concordance
     doc.add_heading("Appendix: Concordance Index", level=1)
     for c_n, kw_d in concordance.items():
         if not kw_d: continue
         doc.add_heading(c_n, level=2)
         for kw, secs in sorted(kw_d.items()):
-            doc.add_paragraph(f"{kw}\t{', '.join(sorted(list(secs)))}", style='ConcIndex')
+            display_kw = kw if len(kw) < 40 else kw[:37] + "..."
+            doc.add_paragraph(f"{display_kw}\t{', '.join(sorted(list(secs)))}", style='ConcIndex')
 
     stream = io.BytesIO(); doc.save(stream); stream.seek(0)
     return stream
 
 # ==========================================
-# STREAMLIT UI
+# STREAMLIT UI INIT
 # ==========================================
-PRELOADED_COLORS = {
-    "Deep Blue": "#1A237E", "Forest Green": "#1B5E20", "Goldenrod": "#B8860B",
-    "Royal Purple": "#4A148C", "Dark Orange": "#E65100", "Saddle Brown": "#5D4037", "Crimson Red": "#B71C1C"
-}
+PRELOADED_COLORS = {"Deep Blue": "#1A237E", "Forest Green": "#1B5E20", "Goldenrod": "#B8860B", "Royal Purple": "#4A148C", "Dark Orange": "#E65100", "Saddle Brown": "#5D4037", "Crimson Red": "#B71C1C"}
 
 if 'rules' not in st.session_state: st.session_state.rules = load_rules_from_json()
 if 'chapters' not in st.session_state:
@@ -385,121 +354,112 @@ if 'chapters' not in st.session_state:
         st.session_state.b_author = sv.get('metadata',{}).get('author', '')
         st.session_state.b_year = sv.get('metadata',{}).get('year', str(datetime.datetime.now().year))
         st.session_state.is_rtl = sv.get('metadata',{}).get('is_rtl', False)
-        st.session_state.labels_raw = sv.get('metadata',{}).get('custom_labels', 'Yusuf Ali, Sahih, Variant A')
+        st.session_state.labels_raw = sv.get('metadata',{}).get('custom_labels', 'Yusuf Ali, Sahih International, Pickthall')
     else:
         st.session_state.chapters = [{"id":str(uuid.uuid4()),"title":"Chapter 1","sections":[{"id":str(uuid.uuid4()),"title":"Section 1","source_text":"","translations":[{"id":str(uuid.uuid4()),"name":"Yusuf Ali","text":""}],"commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}]}]
         st.session_state.b_title, st.session_state.b_author, st.session_state.b_year = "Comparative Study", "", str(datetime.datetime.now().year)
-        st.session_state.is_rtl, st.session_state.labels_raw = False, "Yusuf Ali, Sahih, Variant A"
+        st.session_state.is_rtl, st.session_state.labels_raw = False, "Yusuf Ali, Sahih International, Pickthall"
 
 LABELS = [l.strip() for l in st.session_state.get('labels_raw','').split(',') if l.strip()] + ["Custom..."]
 
 # Control Center (Toggles)
-c1, c2, c3 = st.columns(3)
-zen = c1.toggle("🧘 Zen Mode", value=st.session_state.get('zen_mode', False))
-show_dash = c2.toggle("📊 Show Dashboard", value=not zen)
-show_side = c3.toggle("🛠️ Sidebar Controls", value=not zen)
-
+c_z1, c_z2, c_z3 = st.columns(3)
+zen = c_z1.toggle("🧘 Zen Mode", value=st.session_state.get('zen_mode', False))
+show_dash = c_z2.toggle("📊 Show Dashboard", value=not zen)
+show_side = c_z3.toggle("🛠️ Sidebar Controls", value=not zen)
 st.session_state.zen_mode = zen
 
+# --- SIDEBAR ---
 if show_side:
     with st.sidebar:
-        if is_dark_mode:
-            st.caption("🌙 Dark Mode Active")
+        st.caption("🌙 Dark Mode Active" if is_dark_mode else "☀️ Light Mode Active")
+        
+        st.header("🤖 AI Setup")
+        if AI_AVAILABLE:
+            ai_key = st.text_input("Gemini API Key", type="password", help="Get a free key at aistudio.google.com")
+            if ai_key:
+                genai.configure(api_key=ai_key)
+                st.session_state['ai_key'] = ai_key
+                st.success("AI Connected")
         else:
-            st.caption("☀️ Light Mode Active")
+            st.warning("⚠️ AI module 'google-generativeai' not installed.")
             
-        st.header("📚 Project Details")
+        st.divider(); st.header("📚 Project Details")
         st.session_state.b_title = st.text_input("Project Title", st.session_state.get('b_title', "Comparative Study"))
         st.session_state.b_author = st.text_input("Author Name", st.session_state.get('b_author', ""))
         st.session_state.b_year = st.text_input("Year", st.session_state.get('b_year', str(datetime.datetime.now().year)))
-        st.session_state.is_rtl = st.toggle("Primary Text is RTL (Arabic/Hebrew)", value=st.session_state.get('is_rtl', False))
-        st.session_state.labels_raw = st.text_input("Variant Labels (CSV)", st.session_state.get('labels_raw',''))
+        st.session_state.is_rtl = st.toggle("Primary Text is RTL", value=st.session_state.get('is_rtl', False))
+        st.session_state.labels_raw = st.text_input("Historical Variant Labels (CSV)", st.session_state.get('labels_raw','Yusuf Ali, Pickthall, Sahih'))
         
-        st.divider(); st.header("🎨 Taxonomy")
+        st.divider(); st.header("🎨 Taxonomy Rules")
         c_n = st.text_input("Category Name")
         col_c = st.selectbox("Color", list(PRELOADED_COLORS.keys()))
-        kw_s = st.text_area("Keywords (CSV)")
-        if st.button("➕ Add Rule"):
-            if c_n and kw_s:
-                st.session_state.rules.append({'name':c_n, 'hex_code':PRELOADED_COLORS[col_c], 'keywords':[k.strip() for k in kw_s.split(',') if k.strip()]})
-                save_rules_to_json(st.session_state.rules); st.rerun()
         
+        rule_type = st.radio("Rule Engine", ["Keyword List", "If-Then (Starts With)"], horizontal=True)
+        
+        if rule_type == "Keyword List":
+            kw_s = st.text_area("Keywords (CSV)")
+            if st.button("➕ Add Keyword Rule"):
+                if c_n and kw_s:
+                    st.session_state.rules.append({'name':c_n, 'type': 'keyword', 'hex_code':PRELOADED_COLORS[col_c], 'keywords':[k.strip() for k in kw_s.split(',') if k.strip()]})
+                    save_rules_to_json(st.session_state.rules); st.rerun()
+        else:
+            trigger_word = st.text_input("If sentence starts with...")
+            if st.button("➕ Add If-Then Rule"):
+                if c_n and trigger_word:
+                    pattern = rf"(?i)\b{re.escape(trigger_word)}.*?(?:[.?!؟]|$)"
+                    st.session_state.rules.append({'name':c_n, 'type': 'pattern', 'hex_code':PRELOADED_COLORS[col_c], 'pattern': pattern})
+                    save_rules_to_json(st.session_state.rules); st.rerun()
+
         if st.session_state.rules:
             for i, r in enumerate(st.session_state.rules):
                 with st.expander(f"{r['name']}"):
+                    if r.get('type') == 'pattern': st.code(r.get('pattern'))
+                    else: st.write(f"Keywords: {', '.join(r.get('keywords',[]))}")
                     if st.button(f"Delete", key=f"dr_{i}"): 
                         st.session_state.rules.pop(i)
                         save_rules_to_json(st.session_state.rules); st.rerun()
             
-            # --- FIXED: Added global Reset Rules button ---
             if st.button("🗑️ Reset All Rules", type="secondary", use_container_width=True):
                 st.session_state.rules = []
                 save_rules_to_json(st.session_state.rules); st.rerun()
 
         st.divider(); st.header("📂 Backup & Restore")
-        up_rules = st.file_uploader("Import Rules (JSON)", type="json")
-        if up_rules and st.button("⬆️ Apply Rules"):
-            try:
-                data = json.load(up_rules)
-                new_l_rules = []
-                for r in data:
-                    h = r.get('hex_code', '#1A237E')
-                    new_l_rules.append({'name': r.get('name', 'Untitled'), 'color': hex_to_rgb(h), 'hex_code': h, 'keywords': r.get('keywords', [])})
-                st.session_state.rules = new_l_rules
-                save_rules_to_json(st.session_state.rules); st.rerun()
-            except Exception as e: st.error(f"Error: {e}")
-            
         up_proj = st.file_uploader("Load Project (JSON)", type="json")
-        if up_proj and st.button("⬆️ Load Project Bundle"):
+        if up_proj and st.button("⬆️ Load Bundle"):
             try:
                 d = json.load(up_proj)
-                if "rules" in d: 
-                    new_p_rules = []
-                    for r in d["rules"]:
-                        h = r.get('hex_code', '#1A237E')
-                        new_p_rules.append({'name': r.get('name', 'Untitled'), 'color': hex_to_rgb(h), 'hex_code': h, 'keywords': r.get('keywords', [])})
-                    st.session_state.rules = new_p_rules
-                if "chapters" in d: 
-                    chaps = d["chapters"]
-                    for c in chaps:
-                        for s in c.get('sections', []):
-                            if 'arabic_text' in s and 'source_text' not in s: s['source_text'] = s.pop('arabic_text')
-                    st.session_state.chapters = chaps
-                m = d.get("metadata", {})
-                st.session_state.b_title = m.get('title', st.session_state.b_title)
-                st.session_state.b_author = m.get('author', st.session_state.b_author)
-                st.session_state.is_rtl = m.get('is_rtl', False)
-                st.session_state.labels_raw = m.get('custom_labels', st.session_state.labels_raw)
+                if "rules" in d: st.session_state.rules = d["rules"]
+                if "chapters" in d: st.session_state.chapters = d["chapters"]
                 trigger_autosave(); st.rerun()
             except Exception as e: st.error(f"Error: {e}")
-        
+            
         if st.session_state.chapters:
-            pd = {"metadata":{"title":st.session_state.b_title,"author":st.session_state.b_author,"year":st.session_state.b_year,"is_rtl":st.session_state.is_rtl,"custom_labels":st.session_state.labels_raw},"rules":[{'name':r['name'],'hex_code':r['hex_code'],'keywords':r['keywords']} for r in st.session_state.rules],"chapters":st.session_state.chapters}
+            pd = {"metadata":{"title":st.session_state.b_title,"author":st.session_state.b_author,"year":st.session_state.b_year,"is_rtl":st.session_state.is_rtl,"custom_labels":st.session_state.labels_raw},"rules":st.session_state.rules,"chapters":st.session_state.chapters}
             st.download_button("⬇️ Export Full Project (.json)", json.dumps(pd, indent=4), file_name="Project.json")
-        st.success("🟢 Auto-Save Active")
 
+# --- DASHBOARD ---
 if show_dash:
     st.markdown("### 📊 Scholar's Dashboard")
     cs = st.columns(4)
     tot_s = sum(len(c.get('sections',[])) for c in st.session_state.chapters)
-    ak = [k for r in st.session_state.rules for k in r['keywords']]
+    
+    master_pattern = build_master_regex(st.session_state.rules)
     ic = 0
-    if ak:
-        try:
-            pt = re.compile(r'(' + '|'.join([re.escape(k) for k in ak]) + r')', re.IGNORECASE)
-            for c in st.session_state.chapters:
-                for s in c.get('sections', []):
-                    tx = str(s.get('source_text','')) + " " + str(s.get('commentary','')) + " " + "".join([str(tr.get('text','')) for tr in s.get('translations', [])])
-                    ic += len(pt.findall(tx))
-        except: pass
-    cs[0].metric("Chapters", len(st.session_state.chapters)); cs[1].metric("Sections", tot_s); cs[2].metric("Taxonomies", len(st.session_state.rules)); cs[3].metric("Illuminations", ic)
+    if master_pattern:
+        for c in st.session_state.chapters:
+            for s in c.get('sections', []):
+                tx = str(s.get('source_text','')) + " " + str(s.get('commentary','')) + " " + "".join([str(tr.get('text','')) for tr in s.get('translations', [])])
+                ic += len(master_pattern.findall(tx))
+                
+    cs[0].metric("Chapters", len(st.session_state.chapters))
+    cs[1].metric("Sections", tot_s)
+    cs[2].metric("Taxonomies", len(st.session_state.rules))
+    cs[3].metric("Illuminations", ic)
     st.divider()
 
-# --- FIXED TAB LOGIC: Cleaned tuple unpacking ---
-if not zen:
-    t1, t2 = st.tabs(["📝 Manuscript Builder", "🕸️ Knowledge Web"])
-else:
-    t1, t2 = st.tabs(["📝 Zen Mode Active", "🕸️ Disabled"])
+# --- TABS ---
+t1, t2 = st.tabs(["📝 Manuscript Builder", "🕸️ Knowledge Web"]) if not zen else st.tabs(["📝 Zen Mode Active", "🕸️ Disabled"])
 
 with t1:
     for ci, ch in enumerate(st.session_state.chapters):
@@ -513,39 +473,85 @@ with t1:
                 e, p = st.tabs(["📝 Edit Data", "👁️ Live Preview"])
                 with e:
                     sc['title'] = st.text_input("Section Title", sc['title'], key=f"st_{sc['id']}")
-                    lvl = "Source Text (Anchor)" if not st.session_state.is_rtl else "Source Text (RTL/Arabic)"
+                    lvl = "Primary Source Text (Immutable Anchor)" 
                     sc['source_text'] = st.text_area(lvl, sc.get('source_text', sc.get('arabic_text','')), key=f"sr_{sc['id']}", height=80)
+                    
                     if not zen:
-                        st.divider(); st.markdown("##### Parallel Texts / Variants")
+                        # --- AI RESEARCH ASSISTANT PANEL ---
+                        if AI_AVAILABLE and st.session_state.get('ai_key'):
+                            st.divider()
+                            st.markdown("##### 🤖 AI Research Assistant (Background Analysis)")
+                            ai_c1, ai_c2 = st.columns(2)
+                            with ai_c1:
+                                target_lang = st.selectbox("Target Language", ["English", "Spanish", "French", "German", "Japanese", "Mandarin"], key=f"ail_{sc['id']}")
+                                if st.button("🌐 Generate Foreign Translation", use_container_width=True, key=f"ait_{sc['id']}"):
+                                    if sc['source_text']:
+                                        with st.spinner("Translating safely in background..."):
+                                            try:
+                                                model = genai.GenerativeModel('gemini-pro')
+                                                prompt = f"Translate the following text into highly accurate, academic {target_lang}. Maintain theological/literary nuance. Source text: {sc['source_text']}"
+                                                response = model.generate_content(prompt)
+                                                sc['translations'].append({"id":str(uuid.uuid4()), "name":f"AI Translation ({target_lang})", "text":response.text.strip()})
+                                                st.rerun()
+                                            except Exception as ai_e: st.error(f"AI Error: {ai_e}")
+                                    else: st.warning("Please provide Source Text.")
+                            
+                            with ai_c2:
+                                if st.button("🔍 Map Differences in Historical Variants", use_container_width=True, key=f"aic_{sc['id']}"):
+                                    human_variants = [t for t in sc.get('translations', []) if t['text'] and "AI Translation" not in t['name']]
+                                    if len(human_variants) >= 2:
+                                        with st.spinner("Analyzing historical nuances..."):
+                                            try:
+                                                model = genai.GenerativeModel('gemini-pro')
+                                                vars_text = "\n".join([f"[{t['name']}]: {t['text']}" for t in human_variants])
+                                                prompt = f"Act as a comparative theology scholar. Analyze the linguistic and theological nuances between these historical translations of a single verse. Keep it concise, academic, and highlight specific word choice differences.\n\nTranslations:\n{vars_text}"
+                                                response = model.generate_content(prompt)
+                                                sc['commentary'] = sc.get('commentary', '') + f"\n\n[AI Comparative Mapping]:\n{response.text.strip()}"
+                                                st.rerun()
+                                            except Exception as ai_e: st.error(f"AI Error: {ai_e}")
+                                    else:
+                                        st.warning("Please add at least 2 historical variants (e.g., Yusuf Ali, Pickthall) to compare.")
+                        
+                        st.divider()
+                        st.markdown("##### Historical Parallel Variants")
                         for tr in sc.get('translations', []):
                             c1, c2 = st.columns([1,4])
-                            tr['name'] = c1.selectbox("Label", LABELS, index=(LABELS.index(tr['name']) if tr['name'] in LABELS else 0), key=f"ln_{tr['id']}")
+                            if "AI Translation" in tr['name']:
+                                c1.text_input("Label", tr['name'], key=f"ln_{tr['id']}", disabled=True)
+                            else:
+                                tr['name'] = c1.selectbox("Label", LABELS, index=(LABELS.index(tr['name']) if tr['name'] in LABELS else 0), key=f"ln_{tr['id']}")
                             tr['text'] = c2.text_area("Variant Text", tr['text'], key=f"lt_{tr['id']}", height=68)
-                        if st.button("➕ Add Variant", key=f"av_{sc['id']}"):
+                        
+                        if st.button("➕ Add Historical Variant", key=f"av_{sc['id']}"):
                             sc['translations'].append({"id":str(uuid.uuid4()), "name":LABELS[0], "text":""}); st.rerun()
+                            
                     st.divider(); st.markdown("##### Academic Commentary")
                     sc['commentary'] = st.text_area("Observations", sc['commentary'], key=f"ci_{sc['id']}", height=120)
+                    
                     if not zen:
                         for s in sc.get('sources', []): s['text'] = st.text_input("Source/Citation", s['text'], key=f"si_{s['id']}")
                         if st.button("➕ Add Source", key=f"as_s_{sc['id']}"): sc['sources'].append({"id":str(uuid.uuid4()), "text":""}); st.rerun()
                         if st.button("🗑️ Delete Section", key=f"ds_{sc['id']}"): ch['sections'].pop(si); st.rerun()
+                
                 with p:
-                    st.markdown("##### Source Text Highlighting")
-                    st.markdown(generate_html_preview(sc.get('source_text',''), st.session_state.rules, st.session_state.is_rtl, is_dark_mode), unsafe_allow_html=True)
-                    st.markdown("##### Variants & Commentary Preview")
+                    show_hl = st.toggle("🎨 Enable Taxonomy Highlighting", value=True, key=f"tog_{sc['id']}")
+                    
+                    st.markdown("##### Primary Source Text")
+                    st.markdown(generate_html_preview(sc.get('source_text',''), st.session_state.rules, st.session_state.is_rtl, is_dark_mode, show_hl), unsafe_allow_html=True)
+                    st.markdown("##### Variants & Commentary")
                     vo = "".join([f"<b>[{t['name']}]</b><br>{t['text']}<br><br>" for t in sc.get('translations',[]) if t['text']])
-                    if sc['commentary']:
-                        vo += f"<b>[Commentary]</b><br>{sc['commentary']}"
-                    st.markdown(generate_html_preview(vo, st.session_state.rules, False, is_dark_mode), unsafe_allow_html=True)
+                    if sc['commentary']: vo += f"<b>[Author's Commentary]</b><br>{sc['commentary']}"
+                    st.markdown(generate_html_preview(vo, st.session_state.rules, False, is_dark_mode, show_hl), unsafe_allow_html=True)
+                    
         if not zen:
-            if st.button(f"📜 + Add Section to {ch['title']}", key=f"as_{ch['id']}"):
+            if st.button(f"📜 + Add Section", key=f"as_{ch['id']}"):
                 ch['sections'].append({"id":str(uuid.uuid4()), "title":f"Section {len(ch['sections'])+1}", "source_text":"", "translations":[{"id":str(uuid.uuid4()), "name":LABELS[0], "text":""}], "commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}); st.rerun()
         st.divider()
         
     if not zen:
         c1, c2 = st.columns(2)
         if c1.button("📘 + CREATE NEW CHAPTER", use_container_width=True):
-            st.session_state.chapters.append({"id":str(uuid.uuid4()), "title":f"Chapter {len(st.session_state.chapters)+1}", "sections":[{"id":str(uuid.uuid4()), "title":"Section 1", "source_text":"", "translations":[{"id":str(uuid.uuid4()), "name":LABELS[0], "text":""}], "commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}]}); st.rerun()
+            st.session_state.chapters.append({"id":str(uuid.uuid4()), "title":f"Chapter {len(st.session_state.chapters)+1}", "sections":[{"id":str(uuid.uuid4()), "title":"Section 1", "source_text":"", "translations":[{"id":str(uuid.uuid4()), "name":"Yusuf Ali", "text":""}], "commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}]}); st.rerun()
         if c2.button("🚀 COMPILE MASTER MANUSCRIPT", type="primary", use_container_width=True):
             mt = {'title':st.session_state.get('b_title',''), 'author':st.session_state.get('b_author',''), 'year':st.session_state.get('b_year', str(datetime.datetime.now().year)), 'is_rtl': st.session_state.is_rtl}
             s = build_secure_manuscript(mt, st.session_state.chapters, st.session_state.rules)
@@ -553,7 +559,7 @@ with t1:
 
 with t2:
     if not zen:
-        render_interactive_concordance(st.session_state.chapters, st.session_state.rules)
+        st.info("🕸️ The Knowledge Web is under construction for If-Then rule compatibility.")
     else:
         st.info("🕸️ The Knowledge Web is disabled while Zen Mode is active.")
 

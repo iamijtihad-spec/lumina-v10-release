@@ -18,16 +18,19 @@ Your research is your intellectual property. Lumina is designed with a strict **
 * **Language Direction:** If your primary source text is Arabic or Hebrew, toggle the **Right-to-Left** formatting switch. Lumina will automatically align and inject native RTL XML into your final Word document to preserve calligraphy.
 * **Variant Labels:** Type a comma-separated list of your translations or drafts (e.g., *Yusuf Ali, Pickthall, Sahih* OR *Draft A, Draft B, Final*). These will dynamically populate your dropdown menus.
 
-**Step 2: Build Your Taxonomy (Color Key)**
-* Add Categories (e.g., *Attributes of God*, *Legal Commands*).
-* Assign a publishing-safe color and input your keywords. 
-* *Note: Mix English and Arabic/Hebrew freely. Lumina uses smart regex bounding for Latin characters and root-word logic for RTL characters.*
+**Step 2: Build Your Taxonomy & "If-Then" Rules**
+* **Keyword Rules**: Standard list of names or key terms.
+* **If-Then Patterns**: Dynamic rules like *"If sentence starts with 'Say,' highlight the entire sentence."* Lumina uses smart regex to capture full linguistic contexts.
 
-**Step 3: Draft Your Manuscript**
-* Create Chapters and nest Sections (Verses/Paragraphs) within them. 
-* Use the **Live Print Preview** tab to see your thematic colors illuminate the text in real-time as you type.
+**Step 3: AI Research Assistance (Optional)**
+* **Secure Setup**: Paste your free Google Gemini API key into the sidebar.
+* **Smart Translation**: Generate multi-lingual drafts (Spanish, German, etc.) as *new variants* to keep your historical data clean.
+* **Comparative Mapping**: Let the AI analyze differences between historical translators across the whole verse.
 
-**Step 4: Compile & Publish**
+**Step 4: Draft & Verify**
+* Use the **Live Print Preview** with its per-section **Highlight Toggle** to double-check AI analysis against the raw source text.
+
+**Step 5: Compile & Publish**
 * Click **Compile Master Manuscript**. Lumina will instantly generate an Amazon KDP-compliant `.docx` file featuring a Title Page, Copyright Page, Color Key, Hierarchical Chapters, 60/40 Split Parallel Tables, and an Auto-Generated Concordance Index.
 
 ---
