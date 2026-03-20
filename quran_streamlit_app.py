@@ -16,7 +16,7 @@ from docx.oxml.ns import nsdecls, qn
 # ==========================================
 # PAGE CONFIG & UI SYSTEM
 # ==========================================
-st.set_page_config(page_title="Lumina: Comparative Manuscript Suite", layout="wide")
+st.set_page_config(page_title="Lumina: Al-Qalam Scriptorium", layout="wide")
 
 current_hour = datetime.datetime.now().hour
 is_dark_mode = current_hour < 7 or current_hour >= 19
@@ -350,9 +350,9 @@ if 'chapters' not in st.session_state:
         st.session_state.is_rtl = sv.get('metadata',{}).get('is_rtl', False)
         st.session_state.labels_raw = sv.get('metadata',{}).get('custom_labels', 'Yusuf Ali, Sahih International, Pickthall')
     else:
-        st.session_state.chapters = [{"id":str(uuid.uuid4()),"title":"Chapter 1","sections":[{"id":str(uuid.uuid4()),"title":"Section 1","source_text":"","translations":[{"id":str(uuid.uuid4()),"name":"Yusuf Ali","text":""}],"commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}]}]
-        st.session_state.b_title, st.session_state.b_author, st.session_state.b_year = "Comparative Study", "", str(datetime.datetime.now().year)
-        st.session_state.is_rtl, st.session_state.labels_raw = False, "Yusuf Ali, Sahih International, Pickthall"
+        st.session_state.chapters = [{"id":str(uuid.uuid4()),"title":"Surah 1: Al-Fatiha","sections":[{"id":str(uuid.uuid4()),"title":"Ayah 1","source_text":"","translations":[{"id":str(uuid.uuid4()),"name":"Yusuf Ali","text":""}],"commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}]}]
+        st.session_state.b_title, st.session_state.b_author, st.session_state.b_year = "Quranic Research Manual", "", str(datetime.datetime.now().year)
+        st.session_state.is_rtl, st.session_state.labels_raw = True, "Yusuf Ali, Sahih International, Pickthall"
 
 LABELS = [l.strip() for l in st.session_state.get('labels_raw','').split(',') if l.strip()] + ["Custom..."]
 
@@ -458,8 +458,8 @@ if show_dash:
                 tx = str(s.get('source_text','')) + " " + str(s.get('commentary','')) + " " + "".join([str(tr.get('text','')) for tr in s.get('translations', [])])
                 ic += len(master_pattern.findall(tx))
                 
-    cs[0].metric("Chapters", len(st.session_state.chapters))
-    cs[1].metric("Sections", tot_s)
+    cs[0].metric("Surahs Analyzed", len(st.session_state.chapters))
+    cs[1].metric("Ayahs Annotated", tot_s)
     cs[2].metric("Taxonomies", len(st.session_state.rules))
     cs[3].metric("Illuminations", ic)
     st.divider()
@@ -474,14 +474,14 @@ with t1:
     for ci, ch in enumerate(st.session_state.chapters):
         if not zen:
             c1, c2 = st.columns([5,1])
-            ch['title'] = c1.text_input("Chapter Title", ch['title'], key=f"ct_{ch['id']}")
+            ch['title'] = c1.text_input("Surah Title", ch['title'], key=f"ct_{ch['id']}")
             if c2.button("🗑️", key=f"dc_{ch['id']}"): st.session_state.chapters.pop(ci); st.rerun()
         
         for si, sc in enumerate(ch['sections']):
             with st.expander(f"🔹 {ch['title']} : {sc['title']}", expanded=(si == len(ch['sections'])-1)):
-                e, p = st.tabs(["📝 Edit Data", "👁️ Live Preview"])
+                e, p = st.tabs(["📝 Edit Ayah", "👁️ Live Preview"])
                 with e:
-                    sc['title'] = st.text_input("Section Title", sc['title'], key=f"st_{sc['id']}")
+                    sc['title'] = st.text_input("Ayah Label", sc['title'], key=f"st_{sc['id']}")
                     lvl = "Primary Source Text (Immutable Anchor)" 
                     sc['source_text'] = st.text_area(lvl, sc.get('source_text', sc.get('arabic_text','')), key=f"sr_{sc['id']}", height=80)
                     
@@ -502,7 +502,7 @@ with t1:
                     if not zen:
                         for s in sc.get('sources', []): s['text'] = st.text_input("Source/Citation", s['text'], key=f"si_{s['id']}")
                         if st.button("➕ Add Source", key=f"as_s_{sc['id']}"): sc['sources'].append({"id":str(uuid.uuid4()), "text":""}); st.rerun()
-                        if st.button("🗑️ Delete Section", key=f"ds_{sc['id']}"): ch['sections'].pop(si); st.rerun()
+                        if st.button("🗑️ Delete Ayah", key=f"ds_{sc['id']}"): ch['sections'].pop(si); st.rerun()
                 
                 with p:
                     show_hl = st.toggle("🎨 Enable Taxonomy Highlighting", value=True, key=f"tog_{sc['id']}")
@@ -515,14 +515,14 @@ with t1:
                     st.markdown(generate_html_preview(vo, st.session_state.rules, False, is_dark_mode, show_hl), unsafe_allow_html=True)
                     
         if not zen:
-            if st.button(f"📜 + Add Section", key=f"as_{ch['id']}"):
-                ch['sections'].append({"id":str(uuid.uuid4()), "title":f"Section {len(ch['sections'])+1}", "source_text":"", "translations":[{"id":str(uuid.uuid4()), "name":"Yusuf Ali", "text":""}], "commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}); st.rerun()
+            if st.button(f"📜 + Add Ayah", key=f"as_{ch['id']}"):
+                ch['sections'].append({"id":str(uuid.uuid4()), "title":f"Ayah {len(ch['sections'])+1}", "source_text":"", "translations":[{"id":str(uuid.uuid4()), "name":"Yusuf Ali", "text":""}], "commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}); st.rerun()
         st.divider()
         
     if not zen:
         c1, c2 = st.columns(2)
-        if c1.button("📘 + CREATE NEW CHAPTER", use_container_width=True):
-            st.session_state.chapters.append({"id":str(uuid.uuid4()), "title":f"Chapter {len(st.session_state.chapters)+1}", "sections":[{"id":str(uuid.uuid4()), "title":"Section 1", "source_text":"", "translations":[{"id":str(uuid.uuid4()), "name":"Yusuf Ali", "text":""}], "commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}]}); st.rerun()
+        if c1.button("📗 + CREATE NEW SURAH", use_container_width=True):
+            st.session_state.chapters.append({"id":str(uuid.uuid4()), "title":f"Surah {len(st.session_state.chapters)+1}", "sections":[{"id":str(uuid.uuid4()), "title":"Ayah 1", "source_text":"", "translations":[{"id":str(uuid.uuid4()), "name":"Yusuf Ali", "text":""}], "commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}]}); st.rerun()
         if c2.button("🚀 COMPILE MASTER MANUSCRIPT", type="primary", use_container_width=True):
             mt = {'title':st.session_state.get('b_title',''), 'author':st.session_state.get('b_author',''), 'year':st.session_state.get('b_year', str(datetime.datetime.now().year)), 'is_rtl': st.session_state.is_rtl}
             s = build_secure_manuscript(mt, st.session_state.chapters, st.session_state.rules)
@@ -530,14 +530,14 @@ with t1:
 
 with t3:
     if not zen:
-        st.title("📖 Lumina Official User Guide")
+        st.title("📖 Al-Qalam Official User Guide")
         st.markdown("""
-        **Welcome to Lumina: The Comparative Manuscript Suite.** This application is designed as a "Digital Scriptorium" to help scholars, theologians, and researchers build complex, publisher-ready comparative manuscripts with zero friction.
+        **Welcome to the Al-Qalam Scriptorium.** This specialized edition of Lumina is designed for the rigorous study of the Quran, its translations, and the creation of scholarly concordance manuals.
 
         ---
 
         ### 🛡️ Core Philosophy: Zero-Footprint Security
-        Your research is your intellectual property. Lumina uses a **Zero-Footprint Architecture**:
+        Your research is your intellectual property. Al-Qalam uses a **Zero-Footprint Architecture**:
         * Documents are generated entirely in your browser's RAM. 
         * No manuscript data is ever saved to an external database.
         * Your work is silently auto-saved to your local machine (`autosave_lumina_project.json`).
@@ -545,32 +545,32 @@ with t3:
         ---
 
         ### ⚙️ Step 1: Project Setup (The Sidebar)
-        1. **Metadata:** Enter your Book Title, Author Name, and Copyright Year. This information automatically populates the KDP Title and Copyright pages upon export.
-        2. **Language Formatting:** If your Primary Source Text is Arabic, Hebrew, or another RTL language, toggle **"Primary Text is RTL"**. Lumina will automatically inject native Right-to-Left XML into your final Word document to ensure perfect calligraphy formatting.
-        3. **Custom Labels:** Enter a comma-separated list of the historical translations you use most frequently (e.g., *Yusuf Ali, Pickthall, Sahih*). These will dynamically populate the dropdown menus inside the builder.
+        1. **Metadata:** Enter your Book Title (e.g., *Analytical Quranic Study*), Author, and Year.
+        2. **Language Formatting:** By default, Al-Qalam is optimized for **RTL (Right-to-Left)** primary text. 
+        3. **Variant Labels:** Enter the names of the translators you are comparing (e.g., *Yusuf Ali, Pickthall, Sahih International*).
 
         ---
 
         ### 🎨 Step 2: The Rule Engine (Color Taxonomy)
-        You can color-code your manuscript automatically using two different engines:
+        You can color-code your manuscript automatically:
         
-        * **Option A: Keyword List** Create a category (e.g., *Attributes of God*), pick a color, and paste a list of words. Lumina uses smart word-boundaries to highlight them dynamically across the entire book.
+        * **Option A: Keyword List** Create a category (e.g., *Divine Attributes*), pick a color, and paste a list of words. Al-Qalam will highlight them across all Surahs and Ayahs.
         * **Option B: If-Then (Starts With) Rule**
-          Create a category for complex grammatical structures (e.g., *Divine Commands*). If you type the trigger word `Say,`, the engine will highlight everything from that word until the end of the sentence (stopping at periods, exclamation marks, or Arabic question marks `؟`).
+          Create a category for complex structures (e.g., *Basmala*). If you type the trigger word `Say,`, the engine will highlight until the end of the Ayah (stopping at periods or `؟`).
 
         ---
 
         ### 📝 Step 3: Drafting & The Live Preview
-        Your manuscript is organized into **Chapters** which contain **Sections** (verses/paragraphs).
+        Lumina organizes work into **Surahs (سور)** and **Ayahs (آيات)**.
         
-        * **Editing:** Paste your immutable original text into the "Source Text" box. Then, add as many Historical Variants (translations) as you need. 
-        * **Live Preview:** Click the `👁️ Live Preview` tab inside any section. You can see your highlighted text and typography exactly as it will appear in the final book. You can toggle the highlights on or off using the **🎨 Enable Taxonomy Highlighting** switch.
+        * **Editing:** Paste the immutable Arabic source into the "Primary Source Text" box. Add as many Historical Parallel Variants (translations) as needed for comparison.
+        * **Live Preview:** Click the `👁️ Live Preview` tab inside any Ayah to see your highlighted text and typography exactly as it will appear in the final printed book.
 
         ---
 
         ### 🚀 Step 4: Exporting & Publishing
-        Click the **🚀 COMPILE MASTER MANUSCRIPT** button. 
-        Lumina will instantly generate an Amazon KDP-compliant Microsoft Word `.docx` file featuring a Title Page, Copyright Page, Color Key, Hierarchical Chapters, a 60/40 Split Parallel Layout, and a fully indexed Auto-Concordance in the Appendix.
+        Click **🚀 COMPILE MASTER MANUSCRIPT**. 
+        Al-Qalam will generate an Amazon KDP-compliant Word `.docx` featuring a Title Page, Copyright Page, Color Taxonomy Key, Hierarchical Surahs, 60/40 Split Parallel Tables for each Ayah, and a fully indexed Quranic Concordance.
         """)
     else:
         st.info("📖 The User Guide is disabled while Zen Mode is active.")
