@@ -19,108 +19,52 @@ from docx.oxml.ns import nsdecls, qn
 st.set_page_config(page_title="Lumina: Comparative Manuscript Suite", layout="wide")
 
 # ==========================================
-# MACOS "TAHOE" UI/UX INJECTION
+# TIME-BASED MACOS UI/UX INJECTION
 # ==========================================
-st.markdown("""
-<style>
-    /* Global Typography & Background */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-    
-    html, body, [class*="css"] {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    
-    .stApp {
-        background-color: #f5f5f7; /* macOS Light Mode Default */
-        background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,0.03) 0, transparent 50%), 
-                          radial-gradient(at 50% 0%, hsla(225,39%,30%,0.03) 0, transparent 50%), 
-                          radial-gradient(at 100% 0%, hsla(339,49%,30%,0.03) 0, transparent 50%);
-    }
+# Determine if it is Dark Mode based on time (7 PM to 7 AM is Dark Mode)
+current_hour = datetime.datetime.now().hour
+is_dark_mode = current_hour < 7 or current_hour >= 19
 
-    /* Hide Streamlit Chrome (Header, Menu, Footer) */
-    header {visibility: hidden;}
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-
-    /* Sidebar Glassmorphism (Frosted Glass) */
-    [data-testid="stSidebar"] {
-        background: rgba(255, 255, 255, 0.6) !important;
-        backdrop-filter: blur(24px) saturate(150%);
-        -webkit-backdrop-filter: blur(24px) saturate(150%);
-        border-right: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    /* Inputs & Text Areas (Subtle inner depth, rounded) */
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div {
-        background-color: rgba(255, 255, 255, 0.8) !important;
-        border: 1px solid rgba(0, 0, 0, 0.08) !important;
-        border-radius: 12px !important;
-        box-shadow: inset 0px 2px 4px rgba(0,0,0,0.02) !important;
-        transition: all 0.2s ease;
-    }
-    
-    .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
-        border: 1px solid #0066cc !important;
-        box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.15) !important;
-    }
-
-    /* macOS Buttons */
-    .stButton>button {
-        background: #ffffff;
-        border: 1px solid rgba(0,0,0,0.1);
-        border-radius: 10px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        color: #1d1d1f;
-        font-weight: 500;
-        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-    }
-    
-    .stButton>button:hover {
-        background: #fdfdfd;
-        border-color: rgba(0,0,0,0.15);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        transform: translateY(-1px);
-    }
-
-    /* Primary Button (Compile/Action) */
-    .stButton>button[kind="primary"] {
-        background: linear-gradient(180deg, #007aff 0%, #0056b3 100%);
-        border: none;
-        box-shadow: 0 2px 5px rgba(0, 122, 255, 0.3);
-        color: white;
-    }
-    .stButton>button[kind="primary"]:hover {
-        background: linear-gradient(180deg, #0084ff 0%, #0060c0 100%);
-        box-shadow: 0 4px 14px rgba(0, 122, 255, 0.4);
-    }
-
-    /* Expanders (Sections) */
-    .streamlit-expanderHeader {
-        background-color: rgba(255,255,255,0.5);
-        border-radius: 12px;
-        font-weight: 600;
-    }
-    [data-testid="stExpander"] {
-        background-color: rgba(255, 255, 255, 0.6);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        border: 1px solid rgba(0,0,0,0.05);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.03);
-        margin-bottom: 15px;
-        overflow: hidden;
-    }
-
-    /* Dashboards / Metrics */
-    [data-testid="stMetricValue"] {
-        font-weight: 600;
-        color: #1d1d1f;
-    }
-    [data-testid="stMetricLabel"] {
-        color: #86868b;
-        font-weight: 500;
-    }
-</style>
-""", unsafe_allow_html=True)
+if is_dark_mode:
+    # macOS Dark Mode (Mojave/Monterey)
+    ui_css = """
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; color: #f5f5f7 !important; }
+        .stApp { background-color: #1c1c1e; }
+        header, #MainMenu, footer { visibility: hidden; }
+        [data-testid="stSidebar"] { background: rgba(40, 40, 40, 0.6) !important; backdrop-filter: blur(24px); border-right: 1px solid rgba(255, 255, 255, 0.1); }
+        .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div { background-color: rgba(60, 60, 60, 0.8) !important; color: white !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; border-radius: 12px !important; }
+        .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus { border: 1px solid #0a84ff !important; box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.15) !important; }
+        .stButton>button { background: #2c2c2e; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #f5f5f7; }
+        .stButton>button:hover { background: #3a3a3c; transform: translateY(-1px); }
+        .stButton>button[kind="primary"] { background: linear-gradient(180deg, #0a84ff 0%, #0060c0 100%); color: white !important; border: none; }
+        .streamlit-expanderHeader { background-color: rgba(60,60,60,0.5); border-radius: 12px; font-weight: 600; color: #f5f5f7; }
+        [data-testid="stExpander"] { background-color: rgba(40, 40, 40, 0.6); backdrop-filter: blur(10px); border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
+        [data-testid="stMetricValue"], [data-testid="stMetricLabel"] { color: #f5f5f7; }
+    </style>
+    """
+else:
+    # macOS Light Mode (Tahoe)
+    ui_css = """
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; color: #1d1d1f; }
+        .stApp { background-color: #f5f5f7; background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,0.03) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,0.03) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,49%,30%,0.03) 0, transparent 50%); }
+        header, #MainMenu, footer { visibility: hidden; }
+        [data-testid="stSidebar"] { background: rgba(255, 255, 255, 0.6) !important; backdrop-filter: blur(24px); border-right: 1px solid rgba(0, 0, 0, 0.05); }
+        .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div { background-color: rgba(255, 255, 255, 0.8) !important; border: 1px solid rgba(0, 0, 0, 0.08) !important; border-radius: 12px !important; }
+        .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus { border: 1px solid #0066cc !important; box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.15) !important; }
+        .stButton>button { background: #ffffff; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; color: #1d1d1f; font-weight: 500; }
+        .stButton>button:hover { background: #fdfdfd; transform: translateY(-1px); }
+        .stButton>button[kind="primary"] { background: linear-gradient(180deg, #007aff 0%, #0056b3 100%); color: white !important; border: none; }
+        .streamlit-expanderHeader { background-color: rgba(255,255,255,0.5); border-radius: 12px; font-weight: 600; }
+        [data-testid="stExpander"] { background-color: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); border-radius: 16px; border: 1px solid rgba(0,0,0,0.05); }
+        [data-testid="stMetricValue"] { color: #1d1d1f; }
+        [data-testid="stMetricLabel"] { color: #86868b; }
+    </style>
+    """
+st.markdown(ui_css, unsafe_allow_html=True)
 
 # ==========================================
 # PERSISTENCE & AUTOSAVE HELPERS
@@ -133,7 +77,7 @@ def hex_to_rgb(hex_code):
         hex_code = hex_code.lstrip('#')
         return RGBColor(int(hex_code[0:2], 16), int(hex_code[2:4], 16), int(hex_code[4:6], 16))
     except:
-        return RGBColor(26, 35, 126) # Fallback to Deep Blue
+        return RGBColor(26, 35, 126)
 
 def save_rules_to_json(rules):
     serializable = [{'name': r['name'], 'hex_code': r.get('hex_code', '#000000'), 'keywords': r['keywords']} for r in rules]
@@ -181,14 +125,13 @@ def set_rtl_formatting(paragraph):
     paragraph.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
 def illuminate_run(run, hex_color):
-    """UPGRADED: Font color change instead of shading."""
     run.font.color.rgb = hex_to_rgb(hex_color)
     run.font.bold = True
 
 # ==========================================
 # HTML LIVE PREVIEW GENERATOR
 # ==========================================
-def generate_html_preview(text, rules, is_rtl=False):
+def generate_html_preview(text, rules, is_rtl=False, dark_mode=False):
     if not text: return ""
     all_kws = []
     for r in rules:
@@ -207,7 +150,12 @@ def generate_html_preview(text, rules, is_rtl=False):
     size = "22px" if is_rtl else "18px"
     direction = "rtl" if is_rtl else "ltr"
     
-    return f'<div style="text-align: {align}; font-family: {font}; font-size: {size}; direction: {direction}; line-height: 1.6; padding: 10px; background: #f9f9f9; border-left: 4px solid #ddd; margin-bottom: 10px; color: black;">{escaped_text}</div>'
+    # Adapt Preview colors based on Light/Dark Mode
+    bg_color = "#2c2c2e" if dark_mode else "#f9f9f9"
+    text_color = "#f5f5f7" if dark_mode else "black"
+    border_color = "#555555" if dark_mode else "#dddddd"
+    
+    return f'<div style="text-align: {align}; font-family: {font}; font-size: {size}; direction: {direction}; line-height: 1.6; padding: 10px; background: {bg_color}; border-left: 4px solid {border_color}; margin-bottom: 10px; color: {text_color}; border-radius: 8px;">{escaped_text}</div>'
 
 # ==========================================
 # KNOWLEDGE WEB ENGINE (VIS.JS)
@@ -243,11 +191,14 @@ def render_interactive_concordance(chapters, rules):
                 for r_id in found_rules:
                     edges.append({"from": sec_id, "to": r_id})
 
+    # Adjust Web Background for Dark Mode
+    bg_web = "#1c1c1e" if is_dark_mode else "#ffffff"
+
     html_code = f"""
     <html>
     <head>
         <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-        <style type="text/css">#mynetwork {{width: 100%; height: 600px; border: 1px solid lightgray; background-color: #ffffff;}}</style>
+        <style type="text/css">#mynetwork {{width: 100%; height: 600px; border: 1px solid rgba(150,150,150,0.3); background-color: {bg_web}; border-radius: 12px;}}</style>
     </head>
     <body style="margin: 0; padding: 0;">
         <div id="mynetwork"></div>
@@ -445,6 +396,11 @@ zen = st.toggle("🧘 Zen Mode")
 
 if not zen:
     with st.sidebar:
+        if is_dark_mode:
+            st.caption("🌙 Dark Mode Active")
+        else:
+            st.caption("☀️ Light Mode Active")
+            
         st.header("📚 Project Details")
         st.session_state.b_title = st.text_input("Project Title", st.session_state.get('b_title', "Comparative Study"))
         st.session_state.b_author = st.text_input("Author Name", st.session_state.get('b_author', ""))
@@ -468,6 +424,7 @@ if not zen:
                         st.session_state.rules.pop(i)
                         save_rules_to_json(st.session_state.rules); st.rerun()
             
+            # --- FIXED: Added global Reset Rules button ---
             if st.button("🗑️ Reset All Rules", type="secondary", use_container_width=True):
                 st.session_state.rules = []
                 save_rules_to_json(st.session_state.rules); st.rerun()
@@ -531,13 +488,11 @@ if not zen:
     cs[0].metric("Chapters", len(st.session_state.chapters)); cs[1].metric("Sections", tot_s); cs[2].metric("Taxonomies", len(st.session_state.rules)); cs[3].metric("Illuminations", ic)
     st.divider()
 
-# --- FIXED TAB LOGIC ---
+# --- FIXED TAB LOGIC: Cleaned tuple unpacking ---
 if not zen:
-    t_list = st.tabs(["📝 Manuscript Builder", "🕸️ Knowledge Web"])
-    t1, t2 = t_list[0], t_list[1]
+    t1, t2 = st.tabs(["📝 Manuscript Builder", "🕸️ Knowledge Web"])
 else:
-    t_list = st.tabs(["📝 Zen Mode Active", "🕸️ Disabled"])
-    t1, t2 = t_list[0], t_list[1]
+    t1, t2 = st.tabs(["📝 Zen Mode Active", "🕸️ Disabled"])
 
 with t1:
     for ci, ch in enumerate(st.session_state.chapters):
@@ -552,7 +507,7 @@ with t1:
                 with e:
                     sc['title'] = st.text_input("Section Title", sc['title'], key=f"st_{sc['id']}")
                     lvl = "Source Text (Anchor)" if not st.session_state.is_rtl else "Source Text (RTL/Arabic)"
-                    sc['source_text'] = st.text_area(lvl, sc.get('source_text', sc.pop('arabic_text','')), key=f"sr_{sc['id']}", height=80)
+                    sc['source_text'] = st.text_area(lvl, sc.get('source_text', sc.get('arabic_text','')), key=f"sr_{sc['id']}", height=80)
                     if not zen:
                         st.divider(); st.markdown("##### Parallel Texts / Variants")
                         for tr in sc.get('translations', []):
@@ -568,8 +523,13 @@ with t1:
                         if st.button("➕ Add Source", key=f"as_s_{sc['id']}"): sc['sources'].append({"id":str(uuid.uuid4()), "text":""}); st.rerun()
                         if st.button("🗑️ Delete Section", key=f"ds_{sc['id']}"): ch['sections'].pop(si); st.rerun()
                 with p:
-                    st.markdown("##### Source Text Highlighting"); st.markdown(generate_html_preview(sc.get('source_text',''), st.session_state.rules, st.session_state.is_rtl), unsafe_allow_html=True)
-                    st.markdown("##### Variants & Commentary Preview"); vo = "".join([f"<b>[{t['name']}]</b><br>{t['text']}<br><br>" for t in sc.get('translations',[]) if t['text']]); (vo := vo + f"<b>[Commentary]</b><br>{sc['commentary']}") if sc['commentary'] else None; st.markdown(generate_html_preview(vo, st.session_state.rules, False), unsafe_allow_html=True)
+                    st.markdown("##### Source Text Highlighting")
+                    st.markdown(generate_html_preview(sc.get('source_text',''), st.session_state.rules, st.session_state.is_rtl, is_dark_mode), unsafe_allow_html=True)
+                    st.markdown("##### Variants & Commentary Preview")
+                    vo = "".join([f"<b>[{t['name']}]</b><br>{t['text']}<br><br>" for t in sc.get('translations',[]) if t['text']])
+                    if sc['commentary']:
+                        vo += f"<b>[Commentary]</b><br>{sc['commentary']}"
+                    st.markdown(generate_html_preview(vo, st.session_state.rules, False, is_dark_mode), unsafe_allow_html=True)
         if not zen:
             if st.button(f"📜 + Add Section to {ch['title']}", key=f"as_{ch['id']}"):
                 ch['sections'].append({"id":str(uuid.uuid4()), "title":f"Section {len(ch['sections'])+1}", "source_text":"", "translations":[{"id":str(uuid.uuid4()), "name":LABELS[0], "text":""}], "commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}); st.rerun()
@@ -580,9 +540,9 @@ with t1:
         if c1.button("📘 + CREATE NEW CHAPTER", use_container_width=True):
             st.session_state.chapters.append({"id":str(uuid.uuid4()), "title":f"Chapter {len(st.session_state.chapters)+1}", "sections":[{"id":str(uuid.uuid4()), "title":"Section 1", "source_text":"", "translations":[{"id":str(uuid.uuid4()), "name":LABELS[0], "text":""}], "commentary":"","sources":[{"id":str(uuid.uuid4()),"text":""}]}]}); st.rerun()
         if c2.button("🚀 COMPILE MASTER MANUSCRIPT", type="primary", use_container_width=True):
-            meta = {'title':st.session_state.get('b_title',''), 'author':st.session_state.get('b_author',''), 'year':st.session_state.get('b_year', str(datetime.datetime.now().year)), 'is_rtl': st.session_state.is_rtl}
-            s = build_secure_manuscript(meta, st.session_state.chapters, st.session_state.rules)
-            st.download_button("📥 Download (.docx)", s, f"{meta['title'].replace(' ','_')}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
+            mt = {'title':st.session_state.get('b_title',''), 'author':st.session_state.get('b_author',''), 'year':st.session_state.get('b_year', str(datetime.datetime.now().year)), 'is_rtl': st.session_state.is_rtl}
+            s = build_secure_manuscript(mt, st.session_state.chapters, st.session_state.rules)
+            st.download_button("📥 Download (.docx)", s, f"{mt['title'].replace(' ','_')}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
 
 with t2:
     if not zen:
