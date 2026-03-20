@@ -19,6 +19,110 @@ from docx.oxml.ns import nsdecls, qn
 st.set_page_config(page_title="Lumina: Comparative Manuscript Suite", layout="wide")
 
 # ==========================================
+# MACOS "TAHOE" UI/UX INJECTION
+# ==========================================
+st.markdown("""
+<style>
+    /* Global Typography & Background */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    .stApp {
+        background-color: #f5f5f7; /* macOS Light Mode Default */
+        background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,0.03) 0, transparent 50%), 
+                          radial-gradient(at 50% 0%, hsla(225,39%,30%,0.03) 0, transparent 50%), 
+                          radial-gradient(at 100% 0%, hsla(339,49%,30%,0.03) 0, transparent 50%);
+    }
+
+    /* Hide Streamlit Chrome (Header, Menu, Footer) */
+    header {visibility: hidden;}
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+
+    /* Sidebar Glassmorphism (Frosted Glass) */
+    [data-testid="stSidebar"] {
+        background: rgba(255, 255, 255, 0.6) !important;
+        backdrop-filter: blur(24px) saturate(150%);
+        -webkit-backdrop-filter: blur(24px) saturate(150%);
+        border-right: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    /* Inputs & Text Areas (Subtle inner depth, rounded) */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div>div {
+        background-color: rgba(255, 255, 255, 0.8) !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        border-radius: 12px !important;
+        box-shadow: inset 0px 2px 4px rgba(0,0,0,0.02) !important;
+        transition: all 0.2s ease;
+    }
+    
+    .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
+        border: 1px solid #0066cc !important;
+        box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.15) !important;
+    }
+
+    /* macOS Buttons */
+    .stButton>button {
+        background: #ffffff;
+        border: 1px solid rgba(0,0,0,0.1);
+        border-radius: 10px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        color: #1d1d1f;
+        font-weight: 500;
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    
+    .stButton>button:hover {
+        background: #fdfdfd;
+        border-color: rgba(0,0,0,0.15);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        transform: translateY(-1px);
+    }
+
+    /* Primary Button (Compile/Action) */
+    .stButton>button[kind="primary"] {
+        background: linear-gradient(180deg, #007aff 0%, #0056b3 100%);
+        border: none;
+        box-shadow: 0 2px 5px rgba(0, 122, 255, 0.3);
+        color: white;
+    }
+    .stButton>button[kind="primary"]:hover {
+        background: linear-gradient(180deg, #0084ff 0%, #0060c0 100%);
+        box-shadow: 0 4px 14px rgba(0, 122, 255, 0.4);
+    }
+
+    /* Expanders (Sections) */
+    .streamlit-expanderHeader {
+        background-color: rgba(255,255,255,0.5);
+        border-radius: 12px;
+        font-weight: 600;
+    }
+    [data-testid="stExpander"] {
+        background-color: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: 0 4px 24px rgba(0,0,0,0.03);
+        margin-bottom: 15px;
+        overflow: hidden;
+    }
+
+    /* Dashboards / Metrics */
+    [data-testid="stMetricValue"] {
+        font-weight: 600;
+        color: #1d1d1f;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #86868b;
+        font-weight: 500;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# ==========================================
 # PERSISTENCE & AUTOSAVE HELPERS
 # ==========================================
 RULES_FILE = "taxonomy_rules.json"
