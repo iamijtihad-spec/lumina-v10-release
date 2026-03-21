@@ -49,7 +49,7 @@ def pdf_reader_modal(book_name, start_page):
                 st.session_state.pdf_modal_pg += 1; st.rerun()
                 
         page = doc[current_pg - 1]
-        pil_image = page.render(scale=3).to_pil()
+        pil_image = page.render(scale=4).to_pil()
         
         # Flatten against a solid white background to prevent invisible text in Dark Mode
         white_bg = Image.new("RGB", pil_image.size, (255, 255, 255))
@@ -58,7 +58,7 @@ def pdf_reader_modal(book_name, start_page):
         else:
             white_bg.paste(pil_image)
             
-        st.image(white_bg, use_container_width=True)
+        st.image(white_bg, width="stretch")
     except Exception as e:
         st.error(f"Error rendering PDF: {e}")
 
