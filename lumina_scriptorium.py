@@ -514,14 +514,23 @@ with t1:
                                 if search_query:
                                     found_results = []
                                     book_pages = st.session_state.pdf_library[search_book]
+                                    
+                                    # Create a regex pattern that ignores arbitrary whitespace/newlines between words
+                                    search_terms = search_query.strip().split()
+                                    regex_query = r'\s+'.join(map(re.escape, search_terms))
+                                    search_pattern = re.compile(regex_query, re.IGNORECASE)
+
                                     for page_num, page_text in enumerate(book_pages):
-                                        if page_text and search_query.lower() in page_text.lower():
-                                            # Grab snippet safely
-                                            idx = page_text.lower().find(search_query.lower())
-                                            start = max(0, idx - 80)
-                                            end = min(len(page_text), idx + len(search_query) + 80)
-                                            snippet = page_text[start:end].replace('\n', ' ')
-                                            found_results.append((page_num + 1, snippet))
+                                        if page_text:
+                                            match = search_pattern.search(page_text)
+                                            if match:
+                                                # Grab snippet safely around the match
+                                                start = max(0, match.start() - 80)
+                                                end = min(len(page_text), match.end() + 80)
+                                                snippet = page_text[start:end].replace('\n', ' ')
+                                                # Normalize extra spaces in the snippet for cleaner display
+                                                snippet = re.sub(r'\s+', ' ', snippet)
+                                                found_results.append((page_num + 1, snippet))
                                     
                                     st.session_state[search_state_key] = {
                                         "query": search_query,
@@ -536,12 +545,17 @@ with t1:
                             if res_data:
                                 if res_data["results"]:
                                     st.success(f"Found {len(res_data['results'])} matches for '{res_data['query']}' in '{res_data['book']}':")
-                                    for p_num, snip in res_data["results"][:5]: # Show top 5
+                                    # Re-create pattern for highlighting the snippet
+                                    hlt_terms = res_data['query'].strip().split()
+                                    hlt_regex = r'(' + r'\s+'.join(map(re.escape, hlt_terms)) + r')'
+                                    hlt_pattern = re.compile(hlt_regex, re.IGNORECASE)
+                                    
+                                    for p_num, snip in res_data["results"][:15]: # Show top 15 matches
                                         # Highlight the searched word for better UX
-                                        highlighted_snip = re.sub(f"(?i)({re.escape(res_data['query'])})", r"**\1**", snip)
+                                        highlighted_snip = hlt_pattern.sub(r"**\1**", snip)
                                         st.markdown(f"**Page {p_num}:** ...{highlighted_snip}...")
                                 else:
-                                    st.warning(f"No matches found for '{res_data['query']}'. (Note: Scanned PDFs must contain readable text, not just images).")
+                                    st.warning(f"No matches found for '{res_data['query']}'. (Note: Scanned PDFs must contain text, and you may need to adjust spelling variations).")
                                 
                                 if st.button("Clear Results", key=f"clr_res_{sc['id']}"):
                                     st.session_state[search_state_key] = None
