@@ -14,6 +14,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_TAB_ALIGNMENT
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
+import pypdfium2 as pdfium
 import pdfplumber
 
 # ==========================================
@@ -94,6 +95,14 @@ AUTOSAVE_FILE = "autosave_lumina_project.json"
 def hex_to_rgb(hex_code):
     try: return RGBColor(int(hex_code.lstrip('#')[0:2], 16), int(hex_code.lstrip('#')[2:4], 16), int(hex_code.lstrip('#')[4:6], 16))
     except: return RGBColor(26, 35, 126)
+
+def clean_pdf_text(raw_text):
+    if not raw_text: return ""
+    # Remove soft hyphens and zero-width characters
+    text = re.sub(r'[\xad\u200b\u200c\u200d\uFEFF]', '', raw_text)
+    # Re-join words that were hyphenated at a line break (e.g., "Mer-\nciful" -> "Merciful")
+    text = re.sub(r'([a-zA-Z]+)-\s*\n\s*([a-zA-Z]+)', r'\1\2', text)
+    return text
 
 def is_rtl_text(text):
     if not text: return False
@@ -458,14 +467,16 @@ with t2:
             book_label = st.text_input("Label this Book (e.g., KJV Bible, Yusuf Ali Quran)")
             if st.button("📥 Index Book to RAM", use_container_width=True):
                 if uploaded_file and book_label:
-                    with st.spinner(f"Extracting and indexing '{book_label}'..."):
+                    with st.spinner(f"Extracting and indexing '{book_label}' using PDFium engine..."):
                         try:
-                            # Using pdfplumber to safely extract text from the PDF stream
                             pages_text = []
-                            with pdfplumber.open(uploaded_file) as pdf:
-                                for page in pdf.pages:
-                                    ext_txt = page.extract_text()
-                                    pages_text.append(ext_txt if ext_txt else "")
+                            # Read raw bytes safely
+                            pdf_bytes = uploaded_file.read()
+                            pdf = pdfium.PdfDocument(pdf_bytes)
+                            for i in range(len(pdf)):
+                                textpage = pdf[i].get_textpage()
+                                raw_txt = textpage.get_text_range()
+                                pages_text.append(clean_pdf_text(raw_txt) if raw_txt else "")
                             st.session_state.pdf_library[book_label] = pages_text
                             st.success(f"Indexed {len(pages_text)} pages for '{book_label}'!")
                         except Exception as e:
