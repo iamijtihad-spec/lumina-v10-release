@@ -493,35 +493,59 @@ with t1:
             if c2.button("🗑️", key=f"dc_{ch['id']}"): st.session_state.chapters.pop(ci); st.rerun()
         
         for si, sc in enumerate(ch['sections']):
-            with st.expander(f"🔹 {ch['title']} : {sc['title']}", expanded=(si == len(ch['sections'])-1)):
+            # FIX: Removed aggressive auto-collapsing of expanders so search results stay visible!
+            with st.expander(f"🔹 {ch['title']} : {sc['title']}", expanded=True):
                 e, p = st.tabs(["📝 Edit Data", "👁️ Live Preview"])
                 with e:
-                    # --- NEW: PDF VAULT SEARCH UI ---
+                    # --- PDF VAULT SEARCH UI ---
                     if not zen and st.session_state.pdf_library:
                         with st.container():
                             st.markdown("##### 📖 Search PDF Library")
                             s_c1, s_c2, s_c3 = st.columns([2, 3, 1])
                             search_book = s_c1.selectbox("Select Book", list(st.session_state.pdf_library.keys()), key=f"sb_{sc['id']}")
-                            search_query = s_c2.text_input("Search Phrase or Regex", key=f"sq_{sc['id']}")
+                            search_query = s_c2.text_input("Search Phrase", key=f"sq_{sc['id']}")
+                            
+                            # FIX: Persistent Search Results State
+                            search_state_key = f"search_res_{sc['id']}"
+                            if search_state_key not in st.session_state:
+                                st.session_state[search_state_key] = None
+
                             if s_c3.button("Search", key=f"sbtn_{sc['id']}", use_container_width=True):
                                 if search_query:
                                     found_results = []
                                     book_pages = st.session_state.pdf_library[search_book]
                                     for page_num, page_text in enumerate(book_pages):
-                                        if search_query.lower() in page_text.lower():
-                                            # Grab a snippet around the match
+                                        if page_text and search_query.lower() in page_text.lower():
+                                            # Grab snippet safely
                                             idx = page_text.lower().find(search_query.lower())
-                                            start = max(0, idx - 100)
-                                            end = min(len(page_text), idx + len(search_query) + 100)
+                                            start = max(0, idx - 80)
+                                            end = min(len(page_text), idx + len(search_query) + 80)
                                             snippet = page_text[start:end].replace('\n', ' ')
                                             found_results.append((page_num + 1, snippet))
                                     
-                                    if found_results:
-                                        st.success(f"Found {len(found_results)} matches in '{search_book}':")
-                                        for p_num, snip in found_results[:5]: # Show top 5
-                                            st.markdown(f"**Page {p_num}:** ...{snip}...")
-                                    else:
-                                        st.warning("No matches found.")
+                                    st.session_state[search_state_key] = {
+                                        "query": search_query,
+                                        "book": search_book,
+                                        "results": found_results
+                                    }
+                                else:
+                                    st.warning("Please enter a search phrase.")
+                            
+                            # Display stored results so they don't vanish on reruns
+                            res_data = st.session_state[search_state_key]
+                            if res_data:
+                                if res_data["results"]:
+                                    st.success(f"Found {len(res_data['results'])} matches for '{res_data['query']}' in '{res_data['book']}':")
+                                    for p_num, snip in res_data["results"][:5]: # Show top 5
+                                        # Highlight the searched word for better UX
+                                        highlighted_snip = re.sub(f"(?i)({re.escape(res_data['query'])})", r"**\1**", snip)
+                                        st.markdown(f"**Page {p_num}:** ...{highlighted_snip}...")
+                                else:
+                                    st.warning(f"No matches found for '{res_data['query']}'. (Note: Scanned PDFs must contain readable text, not just images).")
+                                
+                                if st.button("Clear Results", key=f"clr_res_{sc['id']}"):
+                                    st.session_state[search_state_key] = None
+                                    st.rerun()
                         st.divider()
 
                     sc_c1, sc_c2 = st.columns([3, 1])
