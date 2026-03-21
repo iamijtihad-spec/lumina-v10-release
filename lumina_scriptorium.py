@@ -134,7 +134,8 @@ def trigger_autosave():
     project_data = {
         "metadata": {"title": st.session_state.get('b_title', 'Untitled'), "author": st.session_state.get('b_author', ''), "year": st.session_state.get('b_year', ''), "custom_labels": st.session_state.get('labels_raw', 'Yusuf Ali, JPS Tanakh, KJV, NIV')},
         "rules": [{'name': r['name'], 'hex_code': r['hex_code'], 'type': r.get('type', 'keyword'), 'keywords': r.get('keywords', []), 'pattern': r.get('pattern', '')} for r in st.session_state.rules],
-        "chapters": st.session_state.chapters
+        "chapters": st.session_state.chapters,
+        "pdf_library": st.session_state.get("pdf_library", {})
     }
     with open(AUTOSAVE_FILE, "w", encoding="utf-8") as f: json.dump(project_data, f, indent=4)
 
@@ -373,6 +374,7 @@ if 'chapters' not in st.session_state:
     sv = load_autosave()
     if sv and 'chapters' in sv:
         st.session_state.chapters = sv['chapters']
+        st.session_state.pdf_library = sv.get("pdf_library", {})
         st.session_state.b_title = sv.get('metadata',{}).get('title', 'Comparative Study')
         st.session_state.b_author = sv.get('metadata',{}).get('author', '')
         st.session_state.b_year = sv.get('metadata',{}).get('year', str(datetime.datetime.now().year))
@@ -432,11 +434,12 @@ if not zen:
                 d = json.load(up_proj)
                 if "rules" in d: st.session_state.rules = d["rules"]
                 if "chapters" in d: st.session_state.chapters = d["chapters"]
+                if "pdf_library" in d: st.session_state.pdf_library = d["pdf_library"]
                 trigger_autosave(); st.rerun()
             except Exception as e: st.error(f"Error: {e}")
             
         if st.session_state.chapters:
-            pd = {"metadata":{"title":st.session_state.b_title,"author":st.session_state.b_author,"year":st.session_state.b_year,"custom_labels":st.session_state.labels_raw},"rules":st.session_state.rules,"chapters":st.session_state.chapters}
+            pd = {"metadata":{"title":st.session_state.b_title,"author":st.session_state.b_author,"year":st.session_state.b_year,"custom_labels":st.session_state.labels_raw},"rules":st.session_state.rules,"chapters":st.session_state.chapters,"pdf_library":st.session_state.get("pdf_library", {})}
             st.download_button("⬇️ Export Full Project (.json)", json.dumps(pd, indent=4), file_name="Project.json")
 
         st.divider()
@@ -474,7 +477,22 @@ with t2:
                             # Read raw bytes safely
                             pdf_bytes = uploaded_file.read()
                             pdf = pdfium.PdfDocument(pdf_bytes)
+                            
+                            toc_dict = {}
+                            try:
+                                for item in pdf.get_toc():
+                                    toc_dict[item.page_index] = item.title
+                            except Exception:
+                                pass
+                                
+                            current_chapter = "Unknown Section"
+                            full_toc_map = {}
+                            
                             for i in range(len(pdf)):
+                                if i in toc_dict:
+                                    current_chapter = toc_dict[i]
+                                full_toc_map[str(i)] = current_chapter
+                                
                                 page = pdf[i]
                                 textpage = page.get_textpage()
                                 raw_txt = textpage.get_text_range()
@@ -491,7 +509,7 @@ with t2:
                                         pass
                                 
                                 pages_text.append(clean_txt)
-                            st.session_state.pdf_library[book_label] = pages_text
+                            st.session_state.pdf_library[book_label] = {"pages": pages_text, "toc": full_toc_map}
                             st.success(f"Indexed {len(pages_text)} pages for '{book_label}'!")
                         except Exception as e:
                             st.error(f"Failed to read PDF: {e}")
@@ -501,8 +519,9 @@ with t2:
         with c_vault2:
             if st.session_state.pdf_library:
                 st.subheader("Currently Loaded Books")
-                for book_name, pages in st.session_state.pdf_library.items():
-                    st.markdown(f"📖 **{book_name}** ({len(pages)} pages loaded)")
+                for book_name, data in st.session_state.pdf_library.items():
+                    count = len(data) if isinstance(data, list) else len(data.get("pages", []))
+                    st.markdown(f"📖 **{book_name}** ({count} pages loaded)")
                 if st.button("🗑️ Clear Library Memory"):
                     st.session_state.pdf_library = {}
                     st.rerun()
@@ -538,8 +557,14 @@ with t1:
                             if s_c3.button("Search", key=f"sbtn_{sc['id']}", use_container_width=True):
                                 if search_query:
                                     found_results = []
-                                    book_pages = st.session_state.pdf_library[search_book]
-                                    
+                                    book_data = st.session_state.pdf_library[search_book]
+                                    if isinstance(book_data, list):
+                                        book_pages = book_data
+                                        book_toc = {}
+                                    else:
+                                        book_pages = book_data.get("pages", [])
+                                        book_toc = book_data.get("toc", {})
+                                        
                                     # Create a regex pattern that ignores arbitrary whitespace/newlines between words
                                     search_terms = search_query.strip().split()
                                     regex_query = r'\s+'.join(map(re.escape, search_terms))
@@ -555,7 +580,8 @@ with t1:
                                                 snippet = page_text[start:end].replace('\n', ' ')
                                                 # Normalize extra spaces in the snippet for cleaner display
                                                 snippet = re.sub(r'\s+', ' ', snippet)
-                                                found_results.append((page_num + 1, snippet))
+                                                c_title = book_toc.get(str(page_num), "Unknown Section")
+                                                found_results.append((page_num + 1, snippet, c_title))
                                     
                                     st.session_state[search_state_key] = {
                                         "query": search_query,
@@ -575,11 +601,16 @@ with t1:
                                     hlt_regex = r'(' + r'\s+'.join(map(re.escape, hlt_terms)) + r')'
                                     hlt_pattern = re.compile(hlt_regex, re.IGNORECASE)
                                     
-                                    for p_num, snip in res_data["results"][:15]: # Show top 15 matches
-                                        # Highlight the searched word for better UX
-                                        highlighted_snip = hlt_pattern.sub(r"**\1**", snip)
-                                        st.markdown(f"**Page {p_num}:** ...{highlighted_snip}...")
+                                    with st.container(height=350):
+                                        for p_num, snip, c_title in res_data["results"]:
+                                            # Highlight the searched word for better UX
+                                            highlighted_snip = hlt_pattern.sub(r"**\1**", snip)
+                                            if c_title != "Unknown Section":
+                                                st.markdown(f"**Page {p_num} ({c_title}):** ...{highlighted_snip}...")
+                                            else:
+                                                st.markdown(f"**Page {p_num}:** ...{highlighted_snip}...")
                                 else:
+
                                     st.warning(f"No matches found for '{res_data['query']}'. (Note: Scanned PDFs must contain text, and you may need to adjust spelling variations).")
                                 
                                 if st.button("Clear Results", key=f"clr_res_{sc['id']}"):
