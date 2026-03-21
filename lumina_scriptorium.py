@@ -16,6 +16,7 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
 import pypdfium2 as pdfium
 import pdfplumber
+import pytesseract
 
 # ==========================================
 # PAGE CONFIG & UI SYSTEM
@@ -474,9 +475,22 @@ with t2:
                             pdf_bytes = uploaded_file.read()
                             pdf = pdfium.PdfDocument(pdf_bytes)
                             for i in range(len(pdf)):
-                                textpage = pdf[i].get_textpage()
+                                page = pdf[i]
+                                textpage = page.get_textpage()
                                 raw_txt = textpage.get_text_range()
-                                pages_text.append(clean_pdf_text(raw_txt) if raw_txt else "")
+                                clean_txt = clean_pdf_text(raw_txt) if raw_txt else ""
+                                
+                                # Phase 26: Machine Vision OCR Fallback
+                                if not clean_txt.strip():
+                                    try:
+                                        # If no text is found, it's a scanned image. Render it and feed to Tesseract.
+                                        pil_image = page.render(scale=2).to_pil()
+                                        ocr_raw = pytesseract.image_to_string(pil_image)
+                                        clean_txt = clean_pdf_text(ocr_raw) if ocr_raw else ""
+                                    except Exception:
+                                        pass
+                                
+                                pages_text.append(clean_txt)
                             st.session_state.pdf_library[book_label] = pages_text
                             st.success(f"Indexed {len(pages_text)} pages for '{book_label}'!")
                         except Exception as e:
