@@ -503,7 +503,7 @@ with t2:
                                     try:
                                         # If no text is found, it's a scanned image. Render it and feed to Tesseract.
                                         pil_image = page.render(scale=2).to_pil()
-                                        ocr_raw = pytesseract.image_to_string(pil_image)
+                                        ocr_raw = pytesseract.image_to_string(pil_image, lang='ara+eng')
                                         clean_txt = clean_pdf_text(ocr_raw) if ocr_raw else ""
                                     except Exception:
                                         pass
@@ -565,9 +565,20 @@ with t1:
                                         book_pages = book_data.get("pages", [])
                                         book_toc = book_data.get("toc", {})
                                         
-                                    # Create a regex pattern that ignores arbitrary whitespace/newlines between words
-                                    search_terms = search_query.strip().split()
-                                    regex_query = r'\s+'.join(map(re.escape, search_terms))
+                                    def make_arabic_agnostic_regex(query):
+                                        clean_query = re.sub(r'[\u064B-\u065F\u0670]', '', query)
+                                        diacritic_regex = r'[\u064B-\u065F\u0670]*'
+                                        pattern_parts = []
+                                        for word in clean_query.strip().split():
+                                            word_pat = ""
+                                            for char in word:
+                                                if '\u0600' <= char <= '\u06FF': word_pat += re.escape(char) + diacritic_regex
+                                                else: word_pat += re.escape(char)
+                                            pattern_parts.append(word_pat)
+                                        return r'\s+'.join(pattern_parts)
+
+                                    # Create a regex pattern that ignores arbitrary whitespace and Arabic diacritics
+                                    regex_query = make_arabic_agnostic_regex(search_query)
                                     search_pattern = re.compile(regex_query, re.IGNORECASE)
 
                                     for page_num, page_text in enumerate(book_pages):
@@ -596,9 +607,21 @@ with t1:
                             if res_data:
                                 if res_data["results"]:
                                     st.success(f"Found {len(res_data['results'])} matches for '{res_data['query']}' in '{res_data['book']}':")
-                                    # Re-create pattern for highlighting the snippet
-                                    hlt_terms = res_data['query'].strip().split()
-                                    hlt_regex = r'(' + r'\s+'.join(map(re.escape, hlt_terms)) + r')'
+                                    # Re-create Arabic-agnostic pattern for highlighting the snippet
+                                    
+                                    def make_arabic_agnostic_regex(query):
+                                        clean_query = re.sub(r'[\u064B-\u065F\u0670]', '', query)
+                                        diacritic_regex = r'[\u064B-\u065F\u0670]*'
+                                        pattern_parts = []
+                                        for word in clean_query.strip().split():
+                                            word_pat = ""
+                                            for char in word:
+                                                if '\u0600' <= char <= '\u06FF': word_pat += re.escape(char) + diacritic_regex
+                                                else: word_pat += re.escape(char)
+                                            pattern_parts.append(word_pat)
+                                        return r'\s+'.join(pattern_parts)
+                                    
+                                    hlt_regex = r'(' + make_arabic_agnostic_regex(res_data['query']) + r')'
                                     hlt_pattern = re.compile(hlt_regex, re.IGNORECASE)
                                     
                                     with st.container(height=350):
