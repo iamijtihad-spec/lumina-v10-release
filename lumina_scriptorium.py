@@ -602,13 +602,18 @@ with t1:
                                     hlt_pattern = re.compile(hlt_regex, re.IGNORECASE)
                                     
                                     with st.container(height=350):
-                                        for p_num, snip, c_title in res_data["results"]:
+                                        for res_row in res_data["results"]:
+                                            p_num = res_row[0]
+                                            snip = res_row[1]
+                                            c_title = res_row[2] if len(res_row) > 2 else "Unknown Section"
+                                            
                                             # Highlight the searched word for better UX
                                             highlighted_snip = hlt_pattern.sub(r"**\1**", snip)
                                             if c_title != "Unknown Section":
                                                 st.markdown(f"**Page {p_num} ({c_title}):** ...{highlighted_snip}...")
                                             else:
                                                 st.markdown(f"**Page {p_num}:** ...{highlighted_snip}...")
+
                                 else:
 
                                     st.warning(f"No matches found for '{res_data['query']}'. (Note: Scanned PDFs must contain text, and you may need to adjust spelling variations).")
