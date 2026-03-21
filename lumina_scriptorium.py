@@ -17,6 +17,41 @@ from docx.oxml.ns import nsdecls, qn
 import pypdfium2 as pdfium
 import pdfplumber
 import pytesseract
+import os
+
+VAULT_DIR = ".lumina_vault"
+os.makedirs(VAULT_DIR, exist_ok=True)
+
+@st.dialog("Interactive PDF Reader", width="large")
+def pdf_reader_modal(book_name, start_page):
+    if 'pdf_modal_pg' not in st.session_state:
+        st.session_state.pdf_modal_pg = start_page
+        
+    pdf_path = os.path.join(VAULT_DIR, f"{book_name}.pdf")
+    if not os.path.exists(pdf_path):
+        st.error(f"⚠️ Original PDF for '{book_name}' is missing physically.")
+        st.info("Since Lumina is fully offline, it needs the actual .pdf file to render images. You may be viewing a loaded JSON project. Please 'Upload' the document again to physically cache the file into the local vault.")
+        return
+    
+    try:
+        doc = pdfium.PdfDocument(pdf_path)
+        current_pg = st.session_state.pdf_modal_pg
+        
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c1:
+            if current_pg > 1 and st.button("⬅️ Previous"):
+                st.session_state.pdf_modal_pg -= 1; st.rerun()
+        with c2:
+            st.markdown(f"<h4 style='text-align: center'>Page {current_pg} of {len(doc)}</h4>", unsafe_allow_html=True)
+        with c3:
+            if current_pg < len(doc) and st.button("Next ➡️"):
+                st.session_state.pdf_modal_pg += 1; st.rerun()
+                
+        page = doc[current_pg - 1]
+        pil_image = page.render(scale=3).to_pil()
+        st.image(pil_image, use_container_width=True)
+    except Exception as e:
+        st.error(f"Error rendering PDF: {e}")
 
 # ==========================================
 # PAGE CONFIG & UI SYSTEM
@@ -476,6 +511,11 @@ with t2:
                             pages_text = []
                             # Read raw bytes safely
                             pdf_bytes = uploaded_file.read()
+                            
+                            # Cache physical file to local disk for image rendering
+                            with open(os.path.join(VAULT_DIR, f"{book_label}.pdf"), "wb") as f:
+                                f.write(pdf_bytes)
+                                
                             pdf = pdfium.PdfDocument(pdf_bytes)
                             
                             toc_dict = {}
@@ -636,17 +676,23 @@ with t1:
                                     hlt_pattern = re.compile(hlt_regex, re.IGNORECASE)
                                     
                                     with st.container(height=350):
-                                        for res_row in res_data["results"]:
+                                        for idx, res_row in enumerate(res_data["results"]):
                                             p_num = res_row[0]
                                             snip = res_row[1]
                                             c_title = res_row[2] if len(res_row) > 2 else "Unknown Section"
                                             
-                                            # Highlight the searched word for better UX
                                             highlighted_snip = hlt_pattern.sub(r"**\1**", snip)
-                                            if c_title != "Unknown Section":
-                                                st.markdown(f"**Page {p_num} ({c_title}):** ...{highlighted_snip}...")
-                                            else:
-                                                st.markdown(f"**Page {p_num}:** ...{highlighted_snip}...")
+                                            
+                                            cl1, cl2 = st.columns([1, 10], vertical_alignment="center")
+                                            with cl1:
+                                                if st.button("👁️ View", key=f"v_{res_data['book']}_{p_num}_{idx}"):
+                                                    st.session_state.pdf_modal_pg = p_num
+                                                    pdf_reader_modal(res_data['book'], p_num)
+                                            with cl2:
+                                                if c_title != "Unknown Section":
+                                                    st.markdown(f"**Page {p_num} ({c_title}):** ...{highlighted_snip}...")
+                                                else:
+                                                    st.markdown(f"**Page {p_num}:** ...{highlighted_snip}...")
 
                                 else:
 
