@@ -16,6 +16,9 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
 from PIL import Image
 import os
+import pypdfium2 as pdfium
+import pdfplumber
+import pytesseract
 
 VAULT_DIR = ".lumina_vault"
 os.makedirs(VAULT_DIR, exist_ok=True)
