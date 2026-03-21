@@ -412,7 +412,7 @@ if not zen:
             trigger_word = st.text_input("If sentence starts with...")
             if st.button("➕ Add If-Then Rule"):
                 if c_n and trigger_word:
-                    pattern = rf"(?i)\b{re.escape(trigger_word)}.*?(?:[.?!؟]|$)"
+                    pattern = rf"\b{re.escape(trigger_word)}.*?(?:[.?!؟]|$)"
                     st.session_state.rules.append({'name':c_n, 'type': 'pattern', 'hex_code':PRELOADED_COLORS[col_c], 'pattern': pattern})
                     save_rules_to_json(st.session_state.rules); st.rerun()
 
