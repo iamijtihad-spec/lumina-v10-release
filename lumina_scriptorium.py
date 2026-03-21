@@ -585,13 +585,24 @@ with t1:
                                         if page_text:
                                             match = search_pattern.search(page_text)
                                             if match:
-                                                # Grab snippet safely around the match
-                                                start = max(0, match.start() - 80)
-                                                end = min(len(page_text), match.end() + 80)
-                                                snippet = page_text[start:end].replace('\n', ' ')
+                                                start_snip = max(0, match.start() - 80)
+                                                end_snip = min(len(page_text), match.end() + 80)
+                                                snippet = page_text[start_snip:end_snip].replace('\n', ' ')
                                                 # Normalize extra spaces in the snippet for cleaner display
                                                 snippet = re.sub(r'\s+', ' ', snippet)
+                                                
                                                 c_title = book_toc.get(str(page_num), "Unknown Section")
+                                                
+                                                # Phase 29: Reverse-Regex Context Mapping
+                                                text_before_hit = page_text[:match.start()]
+                                                # Match bracketed digits (Arabic/English), inline X:Y notations.
+                                                verse_pattern = re.compile(r'([\[\(\{﴿][\s\d\u0660-\u0669\u06F0-\u06F9:\.]+[\]\)\}﴾]|\b\d{1,3}[:\.]\d{1,3}\b)')
+                                                verse_matches = list(verse_pattern.finditer(text_before_hit))
+                                                if verse_matches:
+                                                    last_verse = verse_matches[-1].group().strip()
+                                                    if c_title == "Unknown Section": c_title = f"Index: {last_verse}"
+                                                    else: c_title += f" | {last_verse}"
+                                                
                                                 found_results.append((page_num + 1, snippet, c_title))
                                     
                                     st.session_state[search_state_key] = {
