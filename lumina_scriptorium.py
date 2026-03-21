@@ -14,9 +14,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_TAB_ALIGNMENT
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
-import pypdfium2 as pdfium
-import pdfplumber
-import pytesseract
+from PIL import Image
 import os
 
 VAULT_DIR = ".lumina_vault"
@@ -49,7 +47,15 @@ def pdf_reader_modal(book_name, start_page):
                 
         page = doc[current_pg - 1]
         pil_image = page.render(scale=3).to_pil()
-        st.image(pil_image, use_container_width=True)
+        
+        # Flatten against a solid white background to prevent invisible text in Dark Mode
+        white_bg = Image.new("RGB", pil_image.size, (255, 255, 255))
+        if pil_image.mode in ('RGBA', 'LA'):
+            white_bg.paste(pil_image, mask=pil_image.split()[-1])
+        else:
+            white_bg.paste(pil_image)
+            
+        st.image(white_bg, use_container_width=True)
     except Exception as e:
         st.error(f"Error rendering PDF: {e}")
 
