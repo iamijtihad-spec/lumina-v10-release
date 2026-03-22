@@ -24,9 +24,6 @@ import qalsadi.lemmatizer
 VAULT_DIR = ".lumina_vault"
 os.makedirs(VAULT_DIR, exist_ok=True)
 
-# Initialize Qalsadi globally to prevent dictionary rebuilds
-arabic_lemmatizer = qalsadi.lemmatizer.Lemmatizer()
-
 @st.dialog("Interactive PDF Reader", width="large")
 def pdf_reader_modal(book_name, start_page):
     if 'pdf_modal_pg' not in st.session_state:
@@ -131,6 +128,8 @@ def algorithmic_frequency_analysis(source_text):
     # Phase 31: Native Arabic Lemmatization Engine
     # If the text is fundamentally Arabic, run it through the Qalsadi morphological dictionary
     if any('\u0600' <= c <= '\u06FF' for c in source_text):
+        import qalsadi.lemmatizer
+        arabic_lemmatizer = qalsadi.lemmatizer.Lemmatizer()
         lemmas = arabic_lemmatizer.lemmatize_text(source_text)
         # Filter 1-letter anomalies and basic syntax connectors if desired, but count primarily the pure roots
         valid_roots = [w for w in lemmas if len(w) > 1 and w not in ["في", "من", "على", "إلى", "أن", "الذي", "عن", "وما", "ولا", "بها"]]
@@ -744,6 +743,7 @@ with t1:
                         st.divider()
                         st.markdown("##### ⚙️ Algorithmic Text Analysis (Offline & Private)")
                         algo_c1, algo_c2 = st.columns(2)
+                        with algo_c1:
                             if st.button("📊 Run Source Frequency Analysis", use_container_width=True, key=f"freq_{sc['id']}"):
                                 if sc.get('source_text'):
                                     freq_report = algorithmic_frequency_analysis(sc['source_text'])
