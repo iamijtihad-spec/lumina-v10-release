@@ -19,9 +19,13 @@ import os
 import pypdfium2 as pdfium
 import pdfplumber
 import pytesseract
+import qalsadi.lemmatizer
 
 VAULT_DIR = ".lumina_vault"
 os.makedirs(VAULT_DIR, exist_ok=True)
+
+# Initialize Qalsadi globally to prevent dictionary rebuilds
+arabic_lemmatizer = qalsadi.lemmatizer.Lemmatizer()
 
 @st.dialog("Interactive PDF Reader", width="large")
 def pdf_reader_modal(book_name, start_page):
@@ -122,14 +126,31 @@ def algorithmic_lexical_diff(variant_1_text, variant_2_text, v1_name, v2_name):
     return report
 
 def algorithmic_frequency_analysis(source_text):
-    words = [clean_word_for_analysis(w) for w in source_text.split() if clean_word_for_analysis(w)]
-    if not words: return "No source text provided for analysis."
-    counts = Counter(words)
-    top_words = counts.most_common(5)
-    report = "[Statistical Source Analysis]\n• Dominant Tokens: "
-    report += ", ".join([f"{w} ({c}x)" for w, c in top_words])
-    report += f"\n• Total Word Count: {len(words)} | Unique Tokens: {len(counts)}"
-    return report
+    if not source_text: return "No source text provided for analysis."
+    
+    # Phase 31: Native Arabic Lemmatization Engine
+    # If the text is fundamentally Arabic, run it through the Qalsadi morphological dictionary
+    if any('\u0600' <= c <= '\u06FF' for c in source_text):
+        lemmas = arabic_lemmatizer.lemmatize_text(source_text)
+        # Filter 1-letter anomalies and basic syntax connectors if desired, but count primarily the pure roots
+        valid_roots = [w for w in lemmas if len(w) > 1 and w not in ["في", "من", "على", "إلى", "أن", "الذي", "عن", "وما", "ولا", "بها"]]
+        counts = Counter(valid_roots)
+        top_words = counts.most_common(5)
+        
+        report = "[Morphological Source Analysis]\n• Dominant Root Concepts: "
+        report += ", ".join([f"{w} ({c}x)" for w, c in top_words])
+        report += f"\n• Total Tokens: {len(lemmas)} | Unique Roots: {len(counts)}"
+        return report
+        
+    else:
+        # Standard Western String Counting
+        words = [clean_word_for_analysis(w) for w in source_text.split() if clean_word_for_analysis(w)]
+        counts = Counter(words)
+        top_words = counts.most_common(5)
+        report = "[Statistical Source Analysis]\n• Dominant Tokens: "
+        report += ", ".join([f"{w} ({c}x)" for w, c in top_words])
+        report += f"\n• Total Word Count: {len(words)} | Unique Tokens: {len(counts)}"
+        return report
 
 # ==========================================
 # HELPERS & PERSISTENCE
