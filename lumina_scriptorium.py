@@ -744,11 +744,11 @@ with t1:
                         st.divider()
                         st.markdown("##### ⚙️ Algorithmic Text Analysis (Offline & Private)")
                         algo_c1, algo_c2 = st.columns(2)
-                        with algo_c1:
                             if st.button("📊 Run Source Frequency Analysis", use_container_width=True, key=f"freq_{sc['id']}"):
                                 if sc.get('source_text'):
                                     freq_report = algorithmic_frequency_analysis(sc['source_text'])
                                     sc['commentary'] = sc.get('commentary', '') + f"\n\n{freq_report}"
+                                    if f"ci_{sc['id']}" in st.session_state: st.session_state[f"ci_{sc['id']}"] = sc['commentary']
                                     st.rerun()
                                 else: st.warning("Please provide Source Text to analyze.")
                         with algo_c2:
@@ -758,6 +758,7 @@ with t1:
                                     v1, v2 = human_variants[0], human_variants[1]
                                     diff_report = algorithmic_lexical_diff(v1['text'], v2['text'], v1['name'], v2['name'])
                                     sc['commentary'] = sc.get('commentary', '') + f"\n\n{diff_report}"
+                                    if f"ci_{sc['id']}" in st.session_state: st.session_state[f"ci_{sc['id']}"] = sc['commentary']
                                     st.rerun()
                                 else: st.warning("Please add at least 2 historical variants (e.g., JPS Tanakh, KJV) to compare.")
                         
