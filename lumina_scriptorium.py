@@ -20,6 +20,14 @@ import pypdfium2 as pdfium
 import pdfplumber
 import pytesseract
 import qalsadi.lemmatizer
+import nltk
+
+# Streamlit Cloud automated initialization for offline NLP
+try:
+    nltk.data.find('corpora/wordnet.zip')
+except LookupError:
+    nltk.download('wordnet', quiet=True)
+    nltk.download('omw-1.4', quiet=True)
 
 VAULT_DIR = ".lumina_vault"
 os.makedirs(VAULT_DIR, exist_ok=True)
@@ -136,19 +144,146 @@ def algorithmic_frequency_analysis(source_text):
         counts = Counter(valid_roots)
         top_words = counts.most_common(5)
         
-        report = "[Morphological Source Analysis]\n• Dominant Root Concepts: "
-        report += ", ".join([f"{w} ({c}x)" for w, c in top_words])
-        report += f"\n• Total Tokens: {len(lemmas)} | Unique Roots: {len(counts)}"
+        # Load Offline Lexicon
+        import json
+        import os
+        root_dict = {}
+        dict_path = os.path.join(os.path.dirname(__file__), 'quranic_roots_dict.json')
+        if os.path.exists(dict_path):
+            with open(dict_path, 'r', encoding='utf-8') as f:
+                root_dict = json.load(f)
+
+        def is_subsequence(root_str, lemma_str):
+            chars = root_str.replace(" ", "")
+            it = iter(lemma_str)
+            return all(c in it for c in chars)
+
+        report = "### 🌿 Morphological Lexicon Analysis\n\n"
+        
+        # Load NLTK for Arabic-to-English Expansion
+        import nltk
+        from nltk.stem import WordNetLemmatizer
+        from nltk.corpus import wordnet
+        import re
+        en_stop_words = {"the", "and", "to", "of", "a", "in", "that", "is", "for", "with", "as", "it", "on", "not", "he", "be", "are", "his", "this", "they", "from", "at", "but", "by", "what", "which", "or", "have", "you", "we", "their", "all", "him", "who", "an", "was", "has", "them", "will", "my", "our", "us", "if", "no", "do", "when", "there", "so", "were", "then", "shall"}
+        nl_lemmatizer = WordNetLemmatizer()
+
+        for w, c in top_words:
+            best_def = ""
+            if root_dict:
+                for root, definition in root_dict.items():
+                    root_chars = root.replace(" ", "")
+                    # Match Subsequence
+                    if is_subsequence(root, w):
+                        if root_chars[0] == w[0]:
+                            best_def = definition
+                            break
+                # Fallback if first-char strict match fails
+                if not best_def:
+                    for root, definition in root_dict.items():
+                        if is_subsequence(root, w):
+                            best_def = definition
+                            break
+            
+            expansion_str = ""
+            if best_def:
+                def_words = re.findall(r'\b[a-zA-Z]+\b', best_def.lower())
+                synonyms = set()
+                for dw in def_words[:6]:
+                    if dw in en_stop_words or len(dw) < 3: continue
+                    lemma = nl_lemmatizer.lemmatize(dw, pos='v')
+                    if lemma == dw: lemma = nl_lemmatizer.lemmatize(dw, pos='n')
+                    try:
+                        for s in wordnet.synsets(lemma):
+                            for l in s.lemmas():
+                                syn_name = l.name().replace('_', ' ')
+                                if syn_name != lemma and syn_name not in en_stop_words:
+                                    synonyms.add(syn_name)
+                    except Exception: pass
+                
+                if synonyms:
+                    expansion_str = f" | 🧠 **NLP Synonyms**: {', '.join(list(synonyms)[:3])}"
+                        
+                best_def = f" — *{best_def[:85]}...*"
+            
+            report += f"- **{w}** ({c}x){best_def}{expansion_str}\n"
+            
+        report += f"\n**Total Tokens**: {len(lemmas)} | **Unique Roots**: {len(counts)}"
         return report
         
     else:
-        # Standard Western String Counting
-        words = [clean_word_for_analysis(w) for w in source_text.split() if clean_word_for_analysis(w)]
-        counts = Counter(words)
+        # Phase 33: Offline English Lexicon and Lemmatization (nltk)
+        import nltk
+        from nltk.stem import WordNetLemmatizer
+        from nltk.corpus import wordnet
+        import re
+        
+        # Stopwords to filter out from substantive theological analysis
+        en_stop_words = {"the", "and", "to", "of", "a", "in", "that", "is", "for", "with", "as", "it", "on", "not", "he", "be", "are", "his", "this", "they", "from", "at", "but", "by", "what", "which", "or", "have", "you", "we", "their", "all", "him", "who", "an", "was", "has", "them", "will", "my", "our", "us", "if", "no", "do", "when", "there", "so", "were", "then", "shall", "unto", "ye", "thou", "thee", "thy", "upon"}
+        
+        lemmatizer = WordNetLemmatizer()
+        
+        # Extract purely alphabetic characters, lowercased
+        raw_words = re.findall(r'\b[a-zA-Z]+\b', source_text.lower())
+        
+        valid_lemmas = []
+        for w in raw_words:
+            if w in en_stop_words or len(w) < 2:
+                continue
+                
+            # Attempt to lemmatize as verb first
+            lemma = lemmatizer.lemmatize(w, pos='v')
+            if lemma == w: # if untouched, try interpreting as noun
+                lemma = lemmatizer.lemmatize(w, pos='n')
+                
+            # Double check the resolved lemma isn't a stopword (e.g., 'praying' -> 'pray', 'are' -> 'be')
+            if lemma not in en_stop_words:
+                valid_lemmas.append(lemma)
+                
+        counts = Counter(valid_lemmas)
         top_words = counts.most_common(5)
-        report = "[Statistical Source Analysis]\n• Dominant Tokens: "
-        report += ", ".join([f"{w} ({c}x)" for w, c in top_words])
-        report += f"\n• Total Word Count: {len(words)} | Unique Tokens: {len(counts)}"
+        
+        report = "### 🌿 Morphological Lexicon Analysis\n\n"
+        
+        # Load Offline Lexicon for Reverse Lookup
+        import json
+        import os
+        root_dict = {}
+        dict_path = os.path.join(os.path.dirname(__file__), 'quranic_roots_dict.json')
+        if os.path.exists(dict_path):
+            with open(dict_path, 'r', encoding='utf-8') as f:
+                root_dict = json.load(f)
+
+        for w, c in top_words:
+            best_def = ""
+            try:
+                synsets = wordnet.synsets(w)
+                if synsets:
+                    best_def = f" — *{synsets[0].definition()[:80]}...*"
+            except Exception:
+                pass
+                
+            # Reverse Quranic Root Mapping
+            matching_roots = []
+            if root_dict:
+                for arb_root, arb_def in root_dict.items():
+                    def_words = re.findall(r'\b[a-zA-Z]+\b', arb_def.lower())
+                    stemmed_def = []
+                    for dw in def_words:
+                        if dw in en_stop_words or len(dw) < 3: continue
+                        l = lemmatizer.lemmatize(dw, pos='v')
+                        if l == dw: l = lemmatizer.lemmatize(dw, pos='n')
+                        stemmed_def.append(l)
+                    
+                    if w in stemmed_def:
+                        matching_roots.append("".join(arb_root.split()))
+                        if len(matching_roots) >= 3:
+                            break
+            
+            root_str = f" | 🔗 **Quranic Roots**: {', '.join(matching_roots)}" if matching_roots else ""
+            report += f"- **{w}** ({c}x){best_def}{root_str}\n"
+            
+        report += f"\n**Total Tokens**: {len(valid_lemmas)} | **Unique Lemmas**: {len(counts)}"
         return report
 
 # ==========================================
